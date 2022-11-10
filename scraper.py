@@ -47,10 +47,9 @@ for grocery_category_link in grocery_category_links:
             next_page_tag.click()
             time.sleep(10)
         
-        # Stop when can no longer find a tag for 
+        # Stop when can no longer find a tag for next page
         except:
             break
-
 
 
 for url in list_links:
@@ -62,11 +61,25 @@ for url in list_links:
     product_dict['name'].append(driver.find_element(by=By.XPATH, value='//h1[@class="pd__header"]').text)
     product_dict['short desc'].append(driver.find_element(by=By.XPATH, value='//div[@class="pd__description"]').text)
 
+    
     price_tag = driver.find_element(by=By.XPATH, value='//div[@class="pd__cost"]')
     product_dict['price'].append(price_tag.find_elements(by=By.XPATH, value='.//div')[1].text)
-    product_dict['price per unit'].append(price_tag.find_element(by=By.XPATH, value='.//span[@data-test-id="pd-unit-price"]').text)
+    try:
+        product_dict['price per unit'].append(price_tag.find_element(by=By.XPATH, value='.//*[@data-test-id="pd-unit-price"]').text)
+    except:
+        offer_price_tag = driver.find_element(by=By.XPATH, value='//div[@data-test-id="pd-retail-price"]')
+        offer_price_divs = offer_price_tag.find_element(by=By.XPATH, value='.//div')
+        product_dict['price'].append(offer_price_divs[1].text)
+        product_dict['price per unit'].append(driver.find_element(by=By.XPATH, value='//div[@data-test-id=""pd-unit-price"]'))
 
-    product_dict['long desc'].append(driver.find_element(by=By.XPATH, value='//div[@class="productText"]').text)
+    try:
+        product_dict['long desc'].append(driver.find_element(by=By.XPATH, value='//div[@class="productText"]').text)
+    except:
+        
+        try:
+            product_dict['long desc'].append(driver.find_element(by=By.XPATH, value='//div[@class="memo"]').text)
+        except:
+            product_dict['long desc'].append(["N/A"])
 
     # Fills dictionary with 0g in case the category doesn't appear on the page
     product_dict['nutritional info']['unit'].append("N/A")
@@ -80,32 +93,24 @@ for url in list_links:
     product_dict['nutritional info']['protein'].append("N/A")
     product_dict['nutritional info']['salt'].append("N/A")
 
-    try:
-        nutritional_info_table = driver.find_element(by=By.XPATH, value='//table[@class="nutritionTable"]')
-        nutritional_table_rows = nutritional_info_table.find_elements(by=By.XPATH, value='.//tr')
-        
-        product_dict['nutritional info']['unit'][-1] = nutritional_table_rows[0].find_elements(by=By.XPATH, value='.//th[@scope="col"]')[1].text
-        product_dict['nutritional info']['energy kJ'][-1] =  nutritional_table_rows[1].find_elements(by=By.XPATH, value='.//td')[0].text
-        product_dict['nutritional info']['energy kcal'][-1] = nutritional_table_rows[2].find_elements(by=By.XPATH, value='.//td')[0].text
-        
-        # Fills dictionary with 0g in case the category doesn't appear on the page
-        product_dict['nutritional info']['fat'].append("N/A")
-        product_dict['nutritional info']['saturates'].append("N/A")
-        product_dict['nutritional info']['carbohydrate'].append("N/A")
-        product_dict['nutritional info']['sugars'].append("N/A")
-        product_dict['nutritional info']['fibre'].append("N/A")
-        product_dict['nutritional info']['protein'].append("N/A")
-        product_dict['nutritional info']['salt'].append("N/A")
+ 
+    nutritional_info_table = driver.find_element(by=By.XPATH, value='//table[@class="nutritionTable"]')
+    nutritional_table_rows = nutritional_info_table.find_elements(by=By.XPATH, value='.//tr')
 
+    product_dict['nutritional info']['unit'][-1] = nutritional_table_rows[0].find_elements(by=By.XPATH, value='.//th[@scope="col"]')[1].text
+    product_dict['nutritional info']['energy kJ'][-1] =  nutritional_table_rows[1].find_elements(by=By.XPATH, value='.//td')[0].text
+    product_dict['nutritional info']['energy kcal'][-1] = nutritional_table_rows[2].find_elements(by=By.XPATH, value='.//td')[0].text
 
-        # Iterates through all of the row headings in the table and replaces the last element relevant key (set to N/A above upon matching
-        for row in nutritional_table_rows[3:]:
-            row_name = str.lower(row.find_element(by=By.XPATH, value='.//th').text)
-            row_amount = row.find_element(by=By.XPATH, value='.//td').text
-            product_dict['nutritional info'][row_name][-1] = row_amount
+    # Iterates through all of the row headings in the table and replaces the last element relevant key (set to N/A above upon matching
+    for row in nutritional_table_rows[3:]:
+        row_name = str.lower(row.find_element(by=By.XPATH, value='.//th').text)
+        row_amount = row.find_element(by=By.XPATH, value='.//td').text
+        try:
+            product_dict['nutritional info'][str.lower(row_name)][-1] = row_amount
+        except:
+            pass
     
-    except:
-        pass
+
 
     print(product_dict)
 
@@ -113,6 +118,6 @@ for url in list_links:
 print(product_dict)
 
 
-
+"""
 while True:
-    pass
+    pass"""
