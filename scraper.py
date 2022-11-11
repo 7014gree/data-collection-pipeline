@@ -2,121 +2,136 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 import time
 
+class Scraper:
+    def __init__(self, url: str):
+        self.driver = webdriver.Chrome()
+        self.driver.get(url)
+        self.category_links = []
+        self.product_links = []
+        self.product_information = self.new_product_info_dict()
 
-driver = webdriver.Chrome()
-url = "https://www.sainsburys.co.uk/"
-driver.get(url)
+        self.accept_cookies()
 
-homepage = driver.find_element(by=By.XPATH, value='//a[@data-label="Groceries"]')
-link = homepage.get_attribute('href')
-time.sleep(4)
+    def navigate_to_groceries(self):
+        time.sleep(5)
 
-accept_cookies_button = homepage.find_element(by=By.XPATH, value='//button[@id="onetrust-accept-btn-handler"]')
-accept_cookies_button.click()
-time.sleep(4)
+        groceries_tag = self.driver.find_element(by=By.XPATH, value='//a[@data-label="Groceries"]')
+        self.driver.get(groceries_tag.get_attribute('href'))
 
-driver.get(link)
+        time.sleep(4)
 
-grocery_category_links = []
-grocery_categories = driver.find_elements(by=By.XPATH, value='//div[@class="mNavigationPropositionTile mNavigationBlock-desktop"]')
-for category in grocery_categories:
-    category_a_tag = category.find_element(by=By.XPATH, value='./a')
-    grocery_category_links.append(category_a_tag.get_attribute('href'))
-
-print(grocery_category_links)
-
-list_links = []
-product_dict = {'name': [], 'short desc': [], 'price': [], 'price per unit': [], 'long desc': [], 'nutritional info': {'unit': [],
-'energy kJ': [], 'energy kcal': [], 'fat': [], 'saturates': [], 'carbohydrate': [], 'sugars': [], 'fibre': [], 'protein': [], 'salt': []}, 'url': []}
-
-for grocery_category_link in grocery_category_links:
-    time.sleep(5)
-    driver.get(grocery_category_link)
-    time.sleep(5)
-
-    while True:
-        product_grid = driver.find_element(by=By.XPATH, value='//ul[@class="productLister gridView"]')
-        product_div_tags = product_grid.find_elements(by=By.XPATH, value='.//div[@class="productInfo"]')
-        for product_tag in product_div_tags:
-            product_link_tag = product_tag.find_element(by=By.XPATH, value='.//a')
-            list_links.append(product_link_tag.get_attribute('href'))
-
+    def accept_cookies(self):
+        time.sleep(2)
         try:
-            next_page_tag = driver.find_element(by=By.XPATH, value='//li[@class="next"]')
-            time.sleep(5)
-            next_page_tag.click()
-            time.sleep(10)
-        
-        # Stop when can no longer find a tag for next page
-        except:
-            break
-
-
-for url in list_links:
-    product_dict['url'].append(url)
-    print(url)
-    time.sleep(4)
-    driver.get(url)
-    time.sleep(20)
-    product_dict['name'].append(driver.find_element(by=By.XPATH, value='//h1[@class="pd__header"]').text)
-    product_dict['short desc'].append(driver.find_element(by=By.XPATH, value='//div[@class="pd__description"]').text)
-
-    
-    price_tag = driver.find_element(by=By.XPATH, value='//div[@class="pd__cost"]')
-    product_dict['price'].append(price_tag.find_elements(by=By.XPATH, value='.//div')[1].text)
-    try:
-        product_dict['price per unit'].append(price_tag.find_element(by=By.XPATH, value='.//*[@data-test-id="pd-unit-price"]').text)
-    except:
-        offer_price_tag = driver.find_element(by=By.XPATH, value='//div[@data-test-id="pd-retail-price"]')
-        offer_price_divs = offer_price_tag.find_element(by=By.XPATH, value='.//div')
-        product_dict['price'].append(offer_price_divs[1].text)
-        product_dict['price per unit'].append(driver.find_element(by=By.XPATH, value='//div[@data-test-id=""pd-unit-price"]'))
-
-    try:
-        product_dict['long desc'].append(driver.find_element(by=By.XPATH, value='//div[@class="productText"]').text)
-    except:
-        
-        try:
-            product_dict['long desc'].append(driver.find_element(by=By.XPATH, value='//div[@class="memo"]').text)
-        except:
-            product_dict['long desc'].append(["N/A"])
-
-    # Fills dictionary with 0g in case the category doesn't appear on the page
-    product_dict['nutritional info']['unit'].append("N/A")
-    product_dict['nutritional info']['energy kJ'].append("N/A")
-    product_dict['nutritional info']['energy kcal'].append("N/A")
-    product_dict['nutritional info']['fat'].append("N/A")
-    product_dict['nutritional info']['saturates'].append("N/A")
-    product_dict['nutritional info']['carbohydrate'].append("N/A")
-    product_dict['nutritional info']['sugars'].append("N/A")
-    product_dict['nutritional info']['fibre'].append("N/A")
-    product_dict['nutritional info']['protein'].append("N/A")
-    product_dict['nutritional info']['salt'].append("N/A")
-
- 
-    nutritional_info_table = driver.find_element(by=By.XPATH, value='//table[@class="nutritionTable"]')
-    nutritional_table_rows = nutritional_info_table.find_elements(by=By.XPATH, value='.//tr')
-
-    product_dict['nutritional info']['unit'][-1] = nutritional_table_rows[0].find_elements(by=By.XPATH, value='.//th[@scope="col"]')[1].text
-    product_dict['nutritional info']['energy kJ'][-1] =  nutritional_table_rows[1].find_elements(by=By.XPATH, value='.//td')[0].text
-    product_dict['nutritional info']['energy kcal'][-1] = nutritional_table_rows[2].find_elements(by=By.XPATH, value='.//td')[0].text
-
-    # Iterates through all of the row headings in the table and replaces the last element relevant key (set to N/A above upon matching
-    for row in nutritional_table_rows[3:]:
-        row_name = str.lower(row.find_element(by=By.XPATH, value='.//th').text)
-        row_amount = row.find_element(by=By.XPATH, value='.//td').text
-        try:
-            product_dict['nutritional info'][str.lower(row_name)][-1] = row_amount
+            accept_cookies_button = self.driver.find_element(by=By.XPATH, value='//button[@id="onetrust-accept-btn-handler"]')
+            accept_cookies_button.click()
         except:
             pass
+        time.sleep(2)
+
+    def new_product_info_dict(self) -> dict:
+        return {'name': [], 'short desc': [], 'price': [], 'price per unit': [], 'long desc': [], 'nutritional info': {'unit': [],
+'energy kJ': [], 'energy kcal': [], 'fat': [], 'saturates': [], 'carbohydrate': [], 'sugars': [], 'fibre': [], 'protein': [], 'salt': []}, 'url': []}
+
+    def get_category_urls(self):
+        category_tags = self.driver.find_elements(by=By.XPATH, value='//div[@class="mNavigationPropositionTile mNavigationBlock-desktop"]')
+        for category in category_tags:
+            category_a_tag = category.find_element(by=By.XPATH, value='./a')
+            self.category_links.append(category_a_tag.get_attribute('href'))
+
+    def get_product_urls(self, category_link):
+        time.sleep(5)
+        self.driver.get(category_link)
+        time.sleep(5)
+
+        while True:
+            product_grid = self.driver.find_element(by=By.XPATH, value='//ul[@class="productLister gridView"]')
+            product_div_tags = product_grid.find_elements(by=By.XPATH, value='.//div[@class="productInfo"]')
+            for product_tag in product_div_tags:
+                product_link_tag = product_tag.find_element(by=By.XPATH, value='.//a')
+                self.product_links.append(product_link_tag.get_attribute('href'))
+
+            try:
+                next_page_tag = self.driver.find_element(by=By.XPATH, value='//li[@class="next"]')
+                time.sleep(5)
+                next_page_tag.click()
+                time.sleep(10)           
+            # Stop when can no longer find a tag for next page
+            except:
+                break
+
+
+    def get_product_info(self, product_link):
+        self.product_information['url'].append(product_link)
+        print(product_link)
+
+        time.sleep(4)
+        self.driver.get(product_link)
+        time.sleep(20)
+
+        self.product_information['name'].append(self.driver.find_element(by=By.XPATH, value='//h1[@class="pd__header"]').text)
+        self.product_information['short desc'].append(self.driver.find_element(by=By.XPATH, value='//div[@class="pd__description"]').text)
+        
+        price_tag = self.driver.find_element(by=By.XPATH, value='//div[@class="pd__cost"]')
+        self.product_information['price'].append(price_tag.find_elements(by=By.XPATH, value='.//div')[1].text)
+        try:
+            self.product_information['price per unit'].append(price_tag.find_element(by=By.XPATH, value='.//*[@data-test-id="pd-unit-price"]').text)
+        except:
+            offer_price_tag = self.driver.find_element(by=By.XPATH, value='//div[@data-test-id="pd-retail-price"]')
+            offer_price_divs = offer_price_tag.find_element(by=By.XPATH, value='.//div')
+            self.product_information['price'].append(offer_price_divs[1].text)
+            self.product_information['price per unit'].append(self.driver.find_element(by=By.XPATH, value='//div[@data-test-id=""pd-unit-price"]'))
+
+        try:
+            self.product_information['long desc'].append(self.driver.find_element(by=By.XPATH, value='//div[@class="productText"]').text)
+        except:       
+            try:
+                self.product_information['long desc'].append(self.driver.find_element(by=By.XPATH, value='//div[@class="memo"]').text)
+            except:
+                self.product_information['long desc'].append(["N/A"])
+
+        # Fills dictionary with 0g in case the category doesn't appear on the page
+        self.product_information['nutritional info']['unit'].append("N/A")
+        self.product_information['nutritional info']['energy kJ'].append("N/A")
+        self.product_information['nutritional info']['energy kcal'].append("N/A")
+        self.product_information['nutritional info']['fat'].append("N/A")
+        self.product_information['nutritional info']['saturates'].append("N/A")
+        self.product_information['nutritional info']['carbohydrate'].append("N/A")
+        self.product_information['nutritional info']['sugars'].append("N/A")
+        self.product_information['nutritional info']['fibre'].append("N/A")
+        self.product_information['nutritional info']['protein'].append("N/A")
+        self.product_information['nutritional info']['salt'].append("N/A")
+
     
+        nutritional_info_table = self.driver.find_element(by=By.XPATH, value='//table[@class="nutritionTable"]')
+        nutritional_table_rows = nutritional_info_table.find_elements(by=By.XPATH, value='.//tr')
 
+        self.product_information['nutritional info']['unit'][-1] = nutritional_table_rows[0].find_elements(by=By.XPATH, value='.//th[@scope="col"]')[1].text
+        self.product_information['nutritional info']['energy kJ'][-1] =  nutritional_table_rows[1].find_elements(by=By.XPATH, value='.//td')[0].text
+        self.product_information['nutritional info']['energy kcal'][-1] = nutritional_table_rows[2].find_elements(by=By.XPATH, value='.//td')[0].text
 
-    print(product_dict)
+        # Iterates through all of the row headings in the table and replaces the last element relevant key (set to N/A above upon matching
+        for row in nutritional_table_rows[3:]:
+            row_name = str.lower(row.find_element(by=By.XPATH, value='.//th').text)
+            if row_name[:9] == "of which ":
+                row_name = row_name[9:]
+            try:
+                row_amount = row.find_element(by=By.XPATH, value='.//td').text
+                self.product_information['nutritional info'][str.lower(row_name)][-1] = row_amount
+            except:
+                pass
+        
+        print(self.product_information)
 
-    
-print(product_dict)
+if __name__ == "__main__":
+    sainsburys_scraper = Scraper("https://www.sainsburys.co.uk/")
+    sainsburys_scraper.navigate_to_groceries()
+    sainsburys_scraper.get_category_urls()
+    for category_link in sainsburys_scraper.category_links:
+        sainsburys_scraper.get_product_urls(category_link)
 
+    for product_link in sainsburys_scraper.product_links:
+        sainsburys_scraper.get_product_info(product_link)
 
 """
 while True:
