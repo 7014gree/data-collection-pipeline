@@ -102,25 +102,27 @@ class Scraper:
         self.product_information['nutritional info']['protein'].append("N/A")
         self.product_information['nutritional info']['salt'].append("N/A")
 
-    
-        nutritional_info_table = self.driver.find_element(by=By.XPATH, value='//table[@class="nutritionTable"]')
-        nutritional_table_rows = nutritional_info_table.find_elements(by=By.XPATH, value='.//tr')
+        try:
+            nutritional_info_table = self.driver.find_element(by=By.XPATH, value='//table[@class="nutritionTable"]')
+            nutritional_table_rows = nutritional_info_table.find_elements(by=By.XPATH, value='.//tr')
 
-        self.product_information['nutritional info']['unit'][-1] = nutritional_table_rows[0].find_elements(by=By.XPATH, value='.//th[@scope="col"]')[1].text
-        self.product_information['nutritional info']['energy kJ'][-1] =  nutritional_table_rows[1].find_elements(by=By.XPATH, value='.//td')[0].text
-        self.product_information['nutritional info']['energy kcal'][-1] = nutritional_table_rows[2].find_elements(by=By.XPATH, value='.//td')[0].text
+            self.product_information['nutritional info']['unit'][-1] = nutritional_table_rows[0].find_elements(by=By.XPATH, value='.//th[@scope="col"]')[1].text
+            self.product_information['nutritional info']['energy kJ'][-1] =  nutritional_table_rows[1].find_elements(by=By.XPATH, value='.//td')[0].text
+            self.product_information['nutritional info']['energy kcal'][-1] = nutritional_table_rows[2].find_elements(by=By.XPATH, value='.//td')[0].text
 
-        # Iterates through all of the row headings in the table and replaces the last element relevant key (set to N/A above upon matching
-        for row in nutritional_table_rows[3:]:
-            row_name = str.lower(row.find_element(by=By.XPATH, value='.//th').text)
-            if row_name[:9] == "of which ":
-                row_name = row_name[9:]
-            try:
-                row_amount = row.find_element(by=By.XPATH, value='.//td').text
-                self.product_information['nutritional info'][str.lower(row_name)][-1] = row_amount
-            except:
-                pass
-        
+            # Iterates through all of the row headings in the table and replaces the last element relevant key (set to N/A above upon matching
+            for row in nutritional_table_rows[3:]:
+                row_name = str.lower(row.find_element(by=By.XPATH, value='.//th').text)
+                if row_name[:9] == "of which ":
+                    row_name = row_name[9:]
+                try:
+                    row_amount = row.find_element(by=By.XPATH, value='.//td').text
+                    self.product_information['nutritional info'][str.lower(row_name)][-1] = row_amount
+                except:
+                    pass
+        except:
+            pass
+
         print(self.product_information)
 
 if __name__ == "__main__":
