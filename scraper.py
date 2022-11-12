@@ -12,16 +12,23 @@ from time import sleep
 
 
 class Scraper:
+
+    """
+    This class a web scraper used to extract data from https://www.sainsburys.co.uk
+
+    Attributes:
+        driver is the selenium webdriver used for navigating web pages.
+        category_links contains a list of urls for categories to scrape.
+        product_links is populated with urls scraped from each category link.
+        delay is used throughout the class for WebDriverWait.
+        cwd is the path for the current working directory, used for making/checking directories and writing files.
+
+    Upon initialising an instance of the class, the following methods are called:
+        make_raw_data_folder() checks that a folder exists to store product information, if not it makes one.
+        accept_cookies() accepts cookies on the web page if they pop up
+    """
+
     def __init__(self, url: str):
-        """
-        self.driver is the selenium webdriver used for navigating web pages.
-        self.category_links contains a list of urls for categories to scrape.
-        self.product_links is populated with urls scraped from each category link.
-        self.delay is used throughout the class for WebDriverWait.
-        self.cwd gets the path for the current working directory, used for making/checking directories and writing files.
-        self.make_raw_data_folder() check that a folder exists to store product information, if not it makes one.
-        selfaccept._cookies() accepts cookies on the web page if they pop up
-        """
         self.__driver = webdriver.Chrome()
         self.__driver.get(url)
         self.category_links = []
@@ -31,7 +38,6 @@ class Scraper:
 
         self.__make_raw_data_folder()
         self.__accept_cookies()
-        print(self.get_product_urls.__doc__)
 
     def __make_raw_data_folder(self) -> None:
         """
@@ -124,7 +130,6 @@ class Scraper:
             print(f"Timeout error retrieving product urls from: {category_link}. Retrying...")
             self.get_product_urls(category_link)
 
-
     def get_product_info(self, product_link: str) -> None:
         """
         This function retrieves all product information from a product page and puts the information in a dictionary.
@@ -133,8 +138,6 @@ class Scraper:
         The function checks whether or not a folder exists with cwd/raw_data for the current product name. If not, the folder is created.
         The function calls download_images to save any extracted images as jpg files within the cwd/raw_data/name/images folder.
         """
-
-
         try:
             self.__driver.get(product_link)
             # Gets timestamp in required format for timestamp in dictionary and name of image file.
@@ -243,7 +246,6 @@ class Scraper:
         }
         self.write_to_JSON(self.cwd, product_dict, name)
 
-
     @staticmethod
     def write_to_JSON(cwd: str, product_dict: dict, name: str) -> None:
         """
@@ -252,7 +254,6 @@ class Scraper:
         """
         with open(f'{cwd}/raw_data/{name}/data.json', 'w') as data_file:
             json_dump(product_dict, data_file)
-
 
     def __download_images(self, folder_path, name: str, timestamp: str) -> str:
         """
