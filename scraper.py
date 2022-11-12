@@ -37,7 +37,8 @@ class Scraper:
 
     def new_product_info_dict(self) -> dict:
         return {'name': [], 'short desc': [], 'price': [], 'price per unit': [], 'long desc': [], 'nutritional info': {'unit': [],
-'energy kJ': [], 'energy kcal': [], 'fat': [], 'saturates': [], 'carbohydrate': [], 'sugars': [], 'fibre': [], 'protein': [], 'salt': []}, 'url': []}
+'energy kJ': [], 'energy kcal': [], 'fat': [], 'saturates': [], 'carbohydrate': [], 'sugars': [], 'fibre': [], 'protein': [], 'salt': []},
+'url': [], 'timestamp': [], 'image_path': []}
 
     def get_category_urls(self):
         try:
@@ -86,6 +87,9 @@ class Scraper:
             name = self.driver.find_element(by=By.XPATH, value='//h1[@class="pd__header"]').text
             self.product_information['name'].append(name)
             self.product_information['short desc'].append(self.driver.find_element(by=By.XPATH, value='//div[@class="pd__description"]').text)
+
+            self.product_information['timestamp'].append(time.time())
+            self.product_information['image_url'].append(f"{name}.jpg")
 
             if self.image_downloaded == False:
                 image_tag = self.driver.find_element(by=By.XPATH, value='//img[@class="pd-image"]')
