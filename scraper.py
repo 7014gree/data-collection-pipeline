@@ -1,10 +1,10 @@
 from datetime import datetime
+from json import dump as json_dump
 from selenium import webdriver
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from json import dump as json_dump
 from os import path as os_path
 from os import mkdir as os_mkdir
 from requests import get as requests_get
