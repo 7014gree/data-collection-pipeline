@@ -23,19 +23,19 @@ class Scraper:
         self.raw_data_folder()
         self.accept_cookies()
 
-    def raw_data_folder(self):
+    def raw_data_folder(self) -> None:
         try:
             assert os_path.exists(f"{self.cwd}/raw_data")
         except:
             os_mkdir(f"{self.cwd}/raw_data")
 
-    def navigate_to_groceries(self):
+    def navigate_to_groceries(self) -> None:
         time_sleep(1)
         groceries_tag = self.driver.find_element(by=By.XPATH, value='//a[@data-label="Groceries"]')
         self.driver.get(groceries_tag.get_attribute('href'))
         time_sleep(1)
 
-    def accept_cookies(self):
+    def accept_cookies(self) -> None:
         try:
             WebDriverWait(self.driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//button[@id="onetrust-accept-btn-handler"]')))
             accept_cookies_button = self.driver.find_element(by=By.XPATH, value='//button[@id="onetrust-accept-btn-handler"]')
@@ -43,9 +43,6 @@ class Scraper:
         except TimeoutException:
             pass
         time_sleep(2)
-
-    def new_product_info_dict(self) -> dict:
-        return 
 
     def get_category_urls(self):
         try:
@@ -60,7 +57,7 @@ class Scraper:
         print(f"Scraping product information from: {self.category_links}.")
         time_sleep(2)
 
-    def get_product_urls(self, category_link):
+    def get_product_urls(self, category_link: str) -> None:
         self.driver.get(category_link)
 
         try:
@@ -84,7 +81,7 @@ class Scraper:
             print(f"Timeout error retrieving product urls from: {category_link}. Retrying...")
             self.get_product_urls(category_link)
 
-    def get_product_info(self, product_link):
+    def get_product_info(self, product_link: str) -> None:
         try:
             self.driver.get(product_link)
             timestamp = datetime.now().strftime("%d%m%Y_%H%M%S")
@@ -178,12 +175,13 @@ class Scraper:
         }
         self.write_to_JSON(product_dict, name)
 
-    def write_to_JSON(self, product_dict, name):
+
+    def write_to_JSON(self, product_dict: dict, name: str) -> None:
         with open(f'{self.cwd}/raw_data/{name}/data.json', 'w') as data_file:
             json_dump(product_dict, data_file)
 
 
-    def download_images(self, name, timestamp) -> str:
+    def download_images(self, name: str, timestamp: str) -> str:
         folder_path = f"{self.cwd}/raw_data/{name}/images"
         try:
             assert os_path.exists(folder_path)
