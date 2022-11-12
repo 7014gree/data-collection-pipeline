@@ -3,6 +3,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
+import requests
 import time
 
 class Scraper:
@@ -13,6 +14,7 @@ class Scraper:
         self.product_links = []
         self.product_information = self.new_product_info_dict()
         self.delay = 10
+        self.image_downloaded = False
 
         self.accept_cookies()
 
@@ -81,8 +83,16 @@ class Scraper:
             self.driver.get(product_link)
             WebDriverWait(self.driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//div[@class="ln-c-card pd-details ln-c-card--soft"]')))
 
-            self.product_information['name'].append(self.driver.find_element(by=By.XPATH, value='//h1[@class="pd__header"]').text)
+            name = self.driver.find_element(by=By.XPATH, value='//h1[@class="pd__header"]').text
+            self.product_information['name'].append(name)
             self.product_information['short desc'].append(self.driver.find_element(by=By.XPATH, value='//div[@class="pd__description"]').text)
+
+            if self.image_downloaded == False:
+                image_tag = self.driver.find_element(by=By.XPATH, value='//img[@class="pd-image"]')
+                image_url = image_tag.get_attribute('href')
+                self.download_image(image_url, name)
+                self.image_downloaded = True
+
             
             price_tag = self.driver.find_element(by=By.XPATH, value='//div[@class="pd__cost"]')
             self.product_information['price'].append(price_tag.find_elements(by=By.XPATH, value='.//div')[1].text)
@@ -142,7 +152,17 @@ class Scraper:
             print("Retrying...")
             self.get_product_info(product_link)
         
+        time.sleep(1)        
         print(self.product_information)
+
+    @staticmethod
+    def download_image(image_url, name):
+        image_data = requests.get(image_url).content
+        with open(f'{name}.jpg', 'wb') as handler:
+            handler.write(image_data)
+
+
+
 
 if __name__ == "__main__":
     sainsburys_scraper = Scraper("https://www.sainsburys.co.uk/")
@@ -153,6 +173,8 @@ if __name__ == "__main__":
 
     for product_link in sainsburys_scraper.product_links:
         sainsburys_scraper.get_product_info(product_link)
+
+    # Scraper.download_image("https://assets.sainsburys-groceries.co.uk/gol/1196757/1/640x640.jpg", "banana")
 
 """
 while True:
