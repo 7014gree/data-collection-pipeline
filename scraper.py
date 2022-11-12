@@ -21,7 +21,7 @@ class Scraper:
         self.cwd = os_path.dirname(os_path.realpath(__file__))
 
         self.__make_raw_data_folder()
-        self.accept_cookies()
+        self.__accept_cookies()
 
     def __make_raw_data_folder(self) -> None:
         try:
@@ -35,7 +35,7 @@ class Scraper:
         self.__driver.get(groceries_tag.get_attribute('href'))
         time_sleep(1)
 
-    def accept_cookies(self) -> None:
+    def __accept_cookies(self) -> None:
         try:
             WebDriverWait(self.__driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//button[@id="onetrust-accept-btn-handler"]')))
             accept_cookies_button = self.__driver.find_element(by=By.XPATH, value='//button[@id="onetrust-accept-btn-handler"]')
@@ -44,7 +44,7 @@ class Scraper:
             pass
         time_sleep(2)
 
-    def get_category_urls(self):
+    def get_category_urls(self) -> None:
         try:
             WebDriverWait(self.__driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//div[@class="mFourCols mNavigationProposionTileWrapper bottomMargin30"]')))
             category_tags = self.__driver.find_elements(by=By.XPATH, value='//div[@class="mNavigationPropositionTile mNavigationBlock-desktop"]')
@@ -97,7 +97,7 @@ class Scraper:
             except:
                 os_mkdir(f"{self.cwd}/raw_data/{name}")
 
-            image_paths = self.download_images(self.cwd, name, timestamp)
+            image_paths = self.__download_images(self.cwd, name, timestamp)
 
             price_tag = self.__driver.find_element(by=By.XPATH, value='//div[@class="pd__cost"]')
             price = price_tag.find_elements(by=By.XPATH, value='.//div')[1].text
