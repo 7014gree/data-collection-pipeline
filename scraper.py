@@ -131,8 +131,18 @@ class Scraper:
                     long_desc = "N/A"
 
             # Fills dictionary with 0g in case the category doesn't appear on the page
-            nutritional_info_dict = {'unit': "N/A", 'energy kJ': "N/A", 'energy kcal': "N/A", 'fat': "N/A",
-'saturates': "N/A", 'carbohydrate': "N/A", 'sugars': "N/A", 'fibre': "N/A", 'protein': "N/A", 'salt': "N/A"}
+            nutritional_info_dict = {
+                'unit': "N/A",
+                'energy kJ': "N/A",
+                'energy kcal': "N/A",
+                'fat': "N/A",
+                'saturates': "N/A",
+                'carbohydrate': "N/A",
+                'sugars': "N/A",
+                'fibre': "N/A",
+                'protein': "N/A",
+                'salt': "N/A"
+            }
 
             try:
                 nutritional_info_table = self.driver.find_element(by=By.XPATH, value='//table[@class="nutritionTable"]')
@@ -165,8 +175,17 @@ class Scraper:
         
         time.sleep(1)
 
-        product_dict = {'name': name, 'short desc': short_desc, 'price': price, 'price per unit': price_per_unit, 'long desc': long_desc,
-'nutritional info': nutritional_info_dict, 'url': product_link, 'timestamp': time.time(), 'image_path': image_path}
+        product_dict = {
+            'name': name,
+            'short desc': short_desc,
+            'price': price,
+            'price per unit': price_per_unit,
+            'long desc': long_desc,
+            'nutritional info': nutritional_info_dict,
+            'url': product_link,
+            'timestamp': timestamp,
+            'image_path': image_path
+        }
         self.write_to_JSON(product_dict, name)
 
     def write_to_JSON(self, product_dict, name):
