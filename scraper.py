@@ -210,9 +210,6 @@ class Scraper:
         except:
             return "No images found."
 
-
-
-
 if __name__ == "__main__":
     sainsburys_scraper = Scraper("https://www.sainsburys.co.uk/")
     sainsburys_scraper.navigate_to_groceries()
@@ -223,6 +220,9 @@ if __name__ == "__main__":
     for product_link in sainsburys_scraper.product_links:
         sainsburys_scraper.get_product_info(product_link)
 
-"""
+
+
+# To stop browser from closing once done
+print("Scraper done")
 while True:
-    pass"""
+    pass

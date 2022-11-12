@@ -10,9 +10,10 @@
 - Ran the entire scraper, upon error the code would print the last used url. I would navigate to that page and manually review the html to identify what was causing the error and modify the code to retrieve the information to deal with those cases.
 - Added code to identify the next page button tag on a given category page. Now the code would navigate to each category link, add the url for each product on the first page to a list, then navigate to the next page within that category and add all product urls on that page to a list, repeated until the next page button could no longer be found, at which point the process would repeat from the next category.
 - Ran the entire scraper again to see which product pages were causing errors, modified the code after inspecting the html for the error-causing pages in order to deal with those errors without impacting current functionality.
+- Added WebDriverWait, which sped up the scraper significantly as previously it was using time.sleep(10) to ensure that pages had loaded completely. This led to the scraper being blocked from the website for some time as it was too fast, so have added back in time.sleep(1) between loading each product page.
 
 # Milestone 4
 - Had to change how product information was stored, from a dictionary of lists to individual dictionaries for each product
 - Imported json for a function to write the dictionary to json. Made a write to json method
-- Added a method to check if the raw data folder already exists, and if not to make the folder. Imported os to get the current working directory file path in order to construct stings containing full file paths.
-- 
+- Added a method to check if the raw data folder already exists, and if not to make the folder. Imported os to get the current working directory path in order to construct stings containing full file paths.
+- Downloading images is in its own method so it can return a list containing all image paths
