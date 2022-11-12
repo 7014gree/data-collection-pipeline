@@ -7,6 +7,7 @@ import json
 import os
 import requests
 import time
+from datetime import datetime
 
 class Scraper:
     def __init__(self, url: str):
@@ -85,12 +86,10 @@ class Scraper:
             self.get_product_urls(category_link)
 
     def get_product_info(self, product_link):
-        
-
-
         try:
             self.driver.get(product_link)
-            timestamp = time.time()
+            timestamp = datetime.now().strftime("%d%m%Y_%H%M%S")
+            
 
             WebDriverWait(self.driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//div[@class="ln-c-card pd-details ln-c-card--soft"]')))
 
@@ -102,16 +101,8 @@ class Scraper:
             except:
                 os.mkdir(f"{self.cwd}/raw_data/{name}")
 
-            try:
-                # Sets image path if successfully donwloaded image
-                self.download_image(name)
-                image_path = f"{self.cwd}/raw_data/{name}.jpg"
-            except:
-                # Element not found or already downloaded an image
-                image_path = "N/A"
+            image_path = self.download_images(name, timestamp)
 
-
-            
             price_tag = self.driver.find_element(by=By.XPATH, value='//div[@class="pd__cost"]')
             price = price_tag.find_elements(by=By.XPATH, value='.//div')[1].text
             try:
@@ -193,16 +184,27 @@ class Scraper:
             json.dump(product_dict, data_file)
 
 
-    def download_image(self, name):
+    def download_images(self, name, timestamp) -> str:
+        folder_path = f"{self.cwd}/raw_data/{name}/images"
         try:
-            image_tag = self.driver.find_element(by=By.XPATH, value='//img[@class="pd__image"]')
-            image_src = image_tag.get_attribute('src')
-
-            image_data = requests.get(image_src).content
-            with open(f'{self.cwd}/raw_data/{name}/{name}.jpg', 'wb') as handler:
-                handler.write(image_data)
+            assert os.path.exists(folder_path)
         except:
-            raise FileNotFoundError
+            os.mkdir(folder_path)
+
+        try:
+            image_paths = []
+            image_tags = self.driver.find_elements(by=By.XPATH, value='//img[@class="pd__image"]')
+                
+            for index, tag in enumerate(image_tags):
+                image_src = tag.get_attribute('src')
+                image_data = requests.get(image_src).content
+                path = f'{folder_path}/{timestamp}_{index}.jpg'
+                with open(path, 'wb') as handler:
+                    handler.write(image_data)
+                image_paths.append(path)
+            return image_paths
+        except:
+            return "No images found."
 
 
 
