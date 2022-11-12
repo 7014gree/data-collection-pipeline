@@ -13,6 +13,15 @@ from time import sleep
 
 class Scraper:
     def __init__(self, url: str):
+        """
+        self.driver is the selenium webdriver used for navigating web pages.
+        self.category_links contains a list of urls for categories to scrape.
+        self.product_links is populated with urls scraped from each category link.
+        self.delay is used throughout the class for WebDriverWait.
+        self.cwd gets the path for the current working directory, used for making/checking directories and writing files.
+        self.make_raw_data_folder() check that a folder exists to store product information, if not it makes one.
+        selfaccept._cookies() accepts cookies on the web page if they pop up
+        """
         self.__driver = webdriver.Chrome()
         self.__driver.get(url)
         self.category_links = []
@@ -22,20 +31,35 @@ class Scraper:
 
         self.__make_raw_data_folder()
         self.__accept_cookies()
+        print(self.get_product_urls.__doc__)
 
     def __make_raw_data_folder(self) -> None:
+        """
+        This function checks if a folder named "raw_data" already exists in the current working directory.
+        It is called upon creating an instance of the Scraper class.
+        If the folder already exists, the rest of the code executes as normal.
+        If the folder does not already exist, the folder will be created.
+        The "raw_data" folder is used to store the information retrieved by the scraper.        
+        """
         try:
             assert os_path.exists(f"{self.cwd}/raw_data")
         except:
             os_mkdir(f"{self.cwd}/raw_data")
 
     def navigate_to_groceries(self) -> None:
+        """
+        This function navigates from https://www.sainsburys.co.uk to the Groceries section.
+        """
         sleep(1)
         groceries_tag = self.__driver.find_element(by=By.XPATH, value='//a[@data-label="Groceries"]')
         self.__driver.get(groceries_tag.get_attribute('href'))
         sleep(1)
 
     def __accept_cookies(self) -> None:
+        """
+        This function clicks the accept cookies button once the element for the button has loaded.
+        If the element does not load within 10 seconds, the script continues to run as normal.
+        """
         try:
             WebDriverWait(self.__driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//button[@id="onetrust-accept-btn-handler"]')))
             accept_cookies_button = self.__driver.find_element(by=By.XPATH, value='//button[@id="onetrust-accept-btn-handler"]')
@@ -45,6 +69,12 @@ class Scraper:
         sleep(2)
 
     def get_category_urls(self) -> None:
+        """
+        This function waits until the Groceries page has loaded, and then retrieves the urls for the categories of groceries.
+        If the elements for the categories of groceries does not appear within 10 seconds the function attempts to navigate to the Groceries page.
+        Then the function is called again, reloading the page.
+        The function prints the urls from which product urls will be received.
+        """
         try:
             WebDriverWait(self.__driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//div[@class="mFourCols mNavigationProposionTileWrapper bottomMargin30"]')))
             category_tags = self.__driver.find_elements(by=By.XPATH, value='//div[@class="mNavigationPropositionTile mNavigationBlock-desktop"]')
@@ -53,11 +83,24 @@ class Scraper:
                 self.category_links.append(category_a_tag.get_attribute('href'))
         except TimeoutException:
             print(f"Error retrieving category urls. Retrying...")
+            try:
+                self.navigate_to_groceries()
+            except:
+                pass
             self.get_category_urls()
         print(f"Scraping product information from: {self.category_links}.")
         sleep(2)
 
     def get_product_urls(self, category_link: str) -> None:
+        """
+        This function first navigates to the first page for a grocery category.
+        Then the function waits for the ul element containing html for products to be loaded.
+        If the ul element is not loaded within 10 seconds, the function is called again, which reloads the page.
+        The function then finds all div elements on the page which contain product information.
+        Within each product div element, the a element is found and the url is retrieved from the a element.
+        Once all product div elements have had a product url extracted, the link for the next page is found and navigated to.
+        If a next page link cannot be found (i.e. all pages have been scraped) the function ends.
+        """
         self.__driver.get(category_link)
 
         try:
@@ -77,30 +120,45 @@ class Scraper:
                 # Stop when can no longer find a tag for next page
                 except:
                     break
-        except:
+        except TimeoutException:
             print(f"Timeout error retrieving product urls from: {category_link}. Retrying...")
             self.get_product_urls(category_link)
 
+
     def get_product_info(self, product_link: str) -> None:
+        """
+        This function retrieves all product information from a product page and puts the information in a dictionary.
+        Then it calls a function write the dictionary to a JSON file.
+        If the page is not loaded within 10 seconds, the function will wait 1000 seconds before calling itself, which reloads the page.
+        The function checks whether or not a folder exists with cwd/raw_data for the current product name. If not, the folder is created.
+        The function calls download_images to save any extracted images as jpg files within the cwd/raw_data/name/images folder.
+        """
+
+
         try:
             self.__driver.get(product_link)
+            # Gets timestamp in required format for timestamp in dictionary and name of image file.
             timestamp = datetime.now().strftime("%d%m%Y_%H%M%S")
             
-
+            # Waits until page is loaded up to long description/nutrtional table.
             WebDriverWait(self.__driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//div[@class="ln-c-card pd-details ln-c-card--soft"]')))
 
             name = self.__driver.find_element(by=By.XPATH, value='//h1[@class="pd__header"]').text
             short_desc = self.__driver.find_element(by=By.XPATH, value='//div[@class="pd__description"]').text
 
+            # Ensures that a folder exists to store the JSON file and images/
+            folder_path = f"{self.cwd}/raw_data/{name}"
             try:
-                assert os_path.exists(f"{self.cwd}/raw_data/{name}")
+                assert os_path.exists(folder_path)
             except:
-                os_mkdir(f"{self.cwd}/raw_data/{name}")
+                os_mkdir(folder_path)
 
-            image_paths = self.__download_images(self.cwd, name, timestamp)
+            image_paths = self.__download_images(folder_path, name, timestamp)
 
             price_tag = self.__driver.find_element(by=By.XPATH, value='//div[@class="pd__cost"]')
             price = price_tag.find_elements(by=By.XPATH, value='.//div')[1].text
+
+            # Catches cases where an item is on sale and hence the tags used are slightly different.
             try:
                 price_per_unit = price_tag.find_element(by=By.XPATH, value='.//*[@data-test-id="pd-unit-price"]').text
             except:
@@ -109,6 +167,7 @@ class Scraper:
                 price = offer_price_divs[1].text
                 price_per_unit = self.__driver.find_element(by=By.XPATH, value='//div[@data-test-id=""pd-unit-price"]')
 
+            # Catches cases where a long description uses a slightly different tag or just doesn't exist
             try:
                 long_desc = self.__driver.find_element(by=By.XPATH, value='//div[@class="productText"]').text
             except:       
@@ -184,18 +243,27 @@ class Scraper:
         }
         self.write_to_JSON(self.cwd, product_dict, name)
 
+
     @staticmethod
     def write_to_JSON(cwd: str, product_dict: dict, name: str) -> None:
+        """
+        Writes a dictionary to a JSON file.
+        Called by get_product_info to write the dictionaries to a JSON file.
+        """
         with open(f'{cwd}/raw_data/{name}/data.json', 'w') as data_file:
             json_dump(product_dict, data_file)
 
 
-    def __download_images(self, cwd: str, name: str, timestamp: str) -> str:
-        folder_path = f"{cwd}/raw_data/{name}/images"
+    def __download_images(self, folder_path, name: str, timestamp: str) -> str:
+        """
+        Ensures that a folder to store images exists.
+        Downloads product images from a page and returns a list of the file paths they are saved to.
+        """
+        image_folder_path = f"{folder_path}/images"
         try:
-            assert os_path.exists(folder_path)
+            assert os_path.exists(image_folder_path)
         except:
-            os_mkdir(folder_path)
+            os_mkdir(image_folder_path)
 
         try:
             image_paths = []
@@ -207,12 +275,14 @@ class Scraper:
                 assert image_tags != []
             except:
                 image_tags = self.__driver.find_elements(by=By.XPATH, value='//img[@class="pd__image pd__image__nocursor"]')
-                
+
+            # enumerate used to keep track of the image number.    
             for index, tag in enumerate(image_tags):
                 image_src = tag.get_attribute('src')
                 image_data = requests_get(image_src).content
 
-                image_path = f'{folder_path}/{timestamp}_{index}.jpg'
+                # File name format <date>_<time>_<image_number_from_page>.jpg
+                image_path = f'{image_folder_path}/{timestamp}_{index}.jpg'
                 with open(image_path, 'wb') as handler:
                     handler.write(image_data)
 
@@ -225,8 +295,10 @@ class Scraper:
 
 if __name__ == "__main__":
     sainsburys_scraper = Scraper("https://www.sainsburys.co.uk/")
+
     sainsburys_scraper.navigate_to_groceries()
     sainsburys_scraper.get_category_urls()
+
     for category_link in sainsburys_scraper.category_links:
         sainsburys_scraper.get_product_urls(category_link)
     
@@ -235,7 +307,7 @@ if __name__ == "__main__":
 
 
 
-# To stop browser from closing once done
-print("Scraping complete")
-while True:
-    pass
+    # To stop browser from closing once done
+    print("Scraping complete")
+    while True:
+        pass
