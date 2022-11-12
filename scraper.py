@@ -8,7 +8,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 from os import path as os_path
 from os import mkdir as os_mkdir
 from requests import get as requests_get
-from time import sleep as time_sleep
+from time import sleep
 
 
 class Scraper:
@@ -30,10 +30,10 @@ class Scraper:
             os_mkdir(f"{self.cwd}/raw_data")
 
     def navigate_to_groceries(self) -> None:
-        time_sleep(1)
+        sleep(1)
         groceries_tag = self.__driver.find_element(by=By.XPATH, value='//a[@data-label="Groceries"]')
         self.__driver.get(groceries_tag.get_attribute('href'))
-        time_sleep(1)
+        sleep(1)
 
     def __accept_cookies(self) -> None:
         try:
@@ -42,7 +42,7 @@ class Scraper:
             accept_cookies_button.click()
         except TimeoutException:
             pass
-        time_sleep(2)
+        sleep(2)
 
     def get_category_urls(self) -> None:
         try:
@@ -55,7 +55,7 @@ class Scraper:
             print(f"Error retrieving category urls. Retrying...")
             self.get_category_urls()
         print(f"Scraping product information from: {self.category_links}.")
-        time_sleep(2)
+        sleep(2)
 
     def get_product_urls(self, category_link: str) -> None:
         self.__driver.get(category_link)
@@ -68,7 +68,7 @@ class Scraper:
                 for product_tag in product_div_tags:
                     product_link_tag = product_tag.find_element(by=By.XPATH, value='.//a')
                     self.product_links.append(product_link_tag.get_attribute('href'))
-                time_sleep(1)
+                sleep(1)
 
                 try:
                     next_page_tag = self.__driver.find_element(by=By.XPATH, value='//li[@class="next"]')
@@ -117,7 +117,7 @@ class Scraper:
                 except:
                     long_desc = "N/A"
 
-            # Fills dictionary with 0g in case the category doesn't appear on the page
+            # Fills dictionary with N/A in case the category doesn't appear on the page
             nutritional_info_dict = {
                 'unit': "N/A",
                 'energy kJ': "N/A",
@@ -131,6 +131,8 @@ class Scraper:
                 'salt': "N/A"
             }
 
+            # If there is a nutritional information table on the page, this tries to retrieve the data from the first column.
+            # If there isn't a table, passes and the values remain as N/A.
             try:
                 nutritional_info_table = self.__driver.find_element(by=By.XPATH, value='//table[@class="nutritionTable"]')
                 nutritional_table_rows = nutritional_info_table.find_elements(by=By.XPATH, value='.//tr')
@@ -139,28 +141,35 @@ class Scraper:
                 nutritional_info_dict['energy kJ'] =  nutritional_table_rows[1].find_elements(by=By.XPATH, value='.//td')[0].text
                 nutritional_info_dict['energy kcal'] = nutritional_table_rows[2].find_elements(by=By.XPATH, value='.//td')[0].text
 
-                # Iterates through all of the row headings in the table and replaces the last element relevant key (set to N/A above upon matching
+                # Iterates through all of the row headings.
+                # Where the heading matches as key in nutritional_info dict, it replaces N/A as the value.
+                # If the heading is not found as a key in nutrional_info_dict, it is removed due to it being a rare outlier.
+                # If a key is never found, it remains as N/A.
+                # This covers pulling the information which is on the vast majority of pages, excluding the odd outlier to avoid having N/A in most dictionaries.
                 for row in nutritional_table_rows[3:]:
                     row_name = str.lower(row.find_element(by=By.XPATH, value='.//th').text)
                     if row_name[:9] == "of which ":
                         row_name = row_name[9:]
                     try:
                         row_amount = row.find_element(by=By.XPATH, value='.//td').text
-                        nutritional_info_dict[str.lower(row_name)] = row_amount
+                        nutritional_info_dict[row_name] = row_amount
                     except:
                         pass
             except:
                 pass
 
+        # If no inforamtion has loaded, tries again in 1,000 seconds.
+        # Prints to console in case it starts looping indefinitely and user wants to stop the script.
+        # Prints status of timer every 10 seconds.
         except TimeoutException:
             print(f"Error retrieving product information for: {product_link}. Retrying in 1000 seconds...")
             for _ in range(100):
                 print(f"{1000 - _ * 10} seconds remaining...")
-                time_sleep(10)
+                sleep(10)
             print("Retrying...")
             self.get_product_info(product_link)
         
-        time_sleep(1)
+        sleep(1)
 
         product_dict = {
             'name': name,
