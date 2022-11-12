@@ -101,7 +101,7 @@ class Scraper:
             except:
                 os.mkdir(f"{self.cwd}/raw_data/{name}")
 
-            image_path = self.download_images(name, timestamp)
+            image_paths = self.download_images(name, timestamp)
 
             price_tag = self.driver.find_element(by=By.XPATH, value='//div[@class="pd__cost"]')
             price = price_tag.find_elements(by=By.XPATH, value='.//div')[1].text
@@ -175,7 +175,7 @@ class Scraper:
             'nutritional info': nutritional_info_dict,
             'url': product_link,
             'timestamp': timestamp,
-            'image_path': image_path
+            'image_path': image_paths
         }
         self.write_to_JSON(product_dict, name)
 
@@ -198,9 +198,11 @@ class Scraper:
             for index, tag in enumerate(image_tags):
                 image_src = tag.get_attribute('src')
                 image_data = requests.get(image_src).content
+
                 path = f'{folder_path}/{timestamp}_{index}.jpg'
                 with open(path, 'wb') as handler:
                     handler.write(image_data)
+
                 image_paths.append(path)
             return image_paths
         except:
