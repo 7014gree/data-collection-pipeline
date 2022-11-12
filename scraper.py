@@ -203,6 +203,8 @@ class Scraper:
                 with open(path, 'wb') as handler:
                     handler.write(image_data)
 
+                # Makes the slashes the same direction for dictionary/writing dictionary to JSON
+                path = path.replace('\\\\','/')
                 image_paths.append(path)
             return image_paths
         except:
