@@ -3,6 +3,8 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
+import json
+import os
 import requests
 import time
 
@@ -12,11 +14,18 @@ class Scraper:
         self.driver.get(url)
         self.category_links = []
         self.product_links = []
-        self.product_information = self.new_product_info_dict()
         self.delay = 10
         self.image_downloaded = False
+        self.cwd = os.path.dirname(os.path.realpath(__file__))
 
+        self.raw_data_folder()
         self.accept_cookies()
+
+    def raw_data_folder(self):
+        try:
+            assert os.path.exists(f"{self.cwd}/raw_data")
+        except:
+            os.mkdir(f"{self.cwd}/raw_data")
 
     def navigate_to_groceries(self):
         time.sleep(5)
@@ -36,9 +45,7 @@ class Scraper:
         time.sleep(2)
 
     def new_product_info_dict(self) -> dict:
-        return {'name': [], 'short desc': [], 'price': [], 'price per unit': [], 'long desc': [], 'nutritional info': {'unit': [],
-'energy kJ': [], 'energy kcal': [], 'fat': [], 'saturates': [], 'carbohydrate': [], 'sugars': [], 'fibre': [], 'protein': [], 'salt': []},
-'url': [], 'timestamp': [], 'image_path': []}
+        return 
 
     def get_category_urls(self):
         try:
@@ -78,63 +85,62 @@ class Scraper:
             self.get_product_urls(category_link)
 
     def get_product_info(self, product_link):
-        self.product_information['url'].append(product_link)
-        print(product_link)
+        
+
+
         try:
             self.driver.get(product_link)
+            timestamp = time.time()
+
             WebDriverWait(self.driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//div[@class="ln-c-card pd-details ln-c-card--soft"]')))
 
             name = self.driver.find_element(by=By.XPATH, value='//h1[@class="pd__header"]').text
-            self.product_information['name'].append(name)
-            self.product_information['short desc'].append(self.driver.find_element(by=By.XPATH, value='//div[@class="pd__description"]').text)
+            short_desc = self.driver.find_element(by=By.XPATH, value='//div[@class="pd__description"]').text
 
-            self.product_information['timestamp'].append(time.time())
-            self.product_information['image_url'].append(f"{name}.jpg")
+            try:
+                assert os.path.exists(f"{self.cwd}/raw_data/{name}")
+            except:
+                os.mkdir(f"{self.cwd}/raw_data/{name}")
 
-            if self.image_downloaded == False:
-                image_tag = self.driver.find_element(by=By.XPATH, value='//img[@class="pd-image"]')
-                image_url = image_tag.get_attribute('href')
-                self.download_image(image_url, name)
-                self.image_downloaded = True
+            try:
+                # Sets image path if successfully donwloaded image
+                self.download_image(name)
+                image_path = f"{self.cwd}/raw_data/{name}.jpg"
+            except:
+                # Element not found or already downloaded an image
+                image_path = "N/A"
+
 
             
             price_tag = self.driver.find_element(by=By.XPATH, value='//div[@class="pd__cost"]')
-            self.product_information['price'].append(price_tag.find_elements(by=By.XPATH, value='.//div')[1].text)
+            price = price_tag.find_elements(by=By.XPATH, value='.//div')[1].text
             try:
-                self.product_information['price per unit'].append(price_tag.find_element(by=By.XPATH, value='.//*[@data-test-id="pd-unit-price"]').text)
+                price_per_unit = price_tag.find_element(by=By.XPATH, value='.//*[@data-test-id="pd-unit-price"]').text
             except:
                 offer_price_tag = self.driver.find_element(by=By.XPATH, value='//div[@data-test-id="pd-retail-price"]')
                 offer_price_divs = offer_price_tag.find_element(by=By.XPATH, value='.//div')
-                self.product_information['price'].append(offer_price_divs[1].text)
-                self.product_information['price per unit'].append(self.driver.find_element(by=By.XPATH, value='//div[@data-test-id=""pd-unit-price"]'))
+                price = offer_price_divs[1].text
+                price_per_unit = self.driver.find_element(by=By.XPATH, value='//div[@data-test-id=""pd-unit-price"]')
 
             try:
-                self.product_information['long desc'].append(self.driver.find_element(by=By.XPATH, value='//div[@class="productText"]').text)
+                long_desc = self.driver.find_element(by=By.XPATH, value='//div[@class="productText"]').text
             except:       
                 try:
-                    self.product_information['long desc'].append(self.driver.find_element(by=By.XPATH, value='//div[@class="memo"]').text)
+                    long_desc = self.driver.find_element(by=By.XPATH, value='//div[@class="memo"]').text
                 except:
-                    self.product_information['long desc'].append(["N/A"])
+                    long_desc = "N/A"
 
             # Fills dictionary with 0g in case the category doesn't appear on the page
-            self.product_information['nutritional info']['unit'].append("N/A")
-            self.product_information['nutritional info']['energy kJ'].append("N/A")
-            self.product_information['nutritional info']['energy kcal'].append("N/A")
-            self.product_information['nutritional info']['fat'].append("N/A")
-            self.product_information['nutritional info']['saturates'].append("N/A")
-            self.product_information['nutritional info']['carbohydrate'].append("N/A")
-            self.product_information['nutritional info']['sugars'].append("N/A")
-            self.product_information['nutritional info']['fibre'].append("N/A")
-            self.product_information['nutritional info']['protein'].append("N/A")
-            self.product_information['nutritional info']['salt'].append("N/A")
+            nutritional_info_dict = {'unit': "N/A", 'energy kJ': "N/A", 'energy kcal': "N/A", 'fat': "N/A",
+'saturates': "N/A", 'carbohydrate': "N/A", 'sugars': "N/A", 'fibre': "N/A", 'protein': "N/A", 'salt': "N/A"}
 
             try:
                 nutritional_info_table = self.driver.find_element(by=By.XPATH, value='//table[@class="nutritionTable"]')
                 nutritional_table_rows = nutritional_info_table.find_elements(by=By.XPATH, value='.//tr')
 
-                self.product_information['nutritional info']['unit'][-1] = nutritional_table_rows[0].find_elements(by=By.XPATH, value='.//th[@scope="col"]')[1].text
-                self.product_information['nutritional info']['energy kJ'][-1] =  nutritional_table_rows[1].find_elements(by=By.XPATH, value='.//td')[0].text
-                self.product_information['nutritional info']['energy kcal'][-1] = nutritional_table_rows[2].find_elements(by=By.XPATH, value='.//td')[0].text
+                nutritional_info_dict['unit'] = nutritional_table_rows[0].find_elements(by=By.XPATH, value='.//th[@scope="col"]')[1].text
+                nutritional_info_dict['energy kJ'] =  nutritional_table_rows[1].find_elements(by=By.XPATH, value='.//td')[0].text
+                nutritional_info_dict['energy kcal'] = nutritional_table_rows[2].find_elements(by=By.XPATH, value='.//td')[0].text
 
                 # Iterates through all of the row headings in the table and replaces the last element relevant key (set to N/A above upon matching
                 for row in nutritional_table_rows[3:]:
@@ -143,11 +149,12 @@ class Scraper:
                         row_name = row_name[9:]
                     try:
                         row_amount = row.find_element(by=By.XPATH, value='.//td').text
-                        self.product_information['nutritional info'][str.lower(row_name)][-1] = row_amount
+                        nutritional_info_dict[str.lower(row_name)] = row_amount
                     except:
                         pass
             except:
                 pass
+
         except TimeoutException:
             print(f"Error retrieving product information for: {product_link}. Retrying in 1000 seconds...")
             for _ in range(100):
@@ -156,14 +163,27 @@ class Scraper:
             print("Retrying...")
             self.get_product_info(product_link)
         
-        time.sleep(1)        
-        print(self.product_information)
+        time.sleep(1)
 
-    @staticmethod
-    def download_image(image_url, name):
-        image_data = requests.get(image_url).content
-        with open(f'{name}.jpg', 'wb') as handler:
-            handler.write(image_data)
+        product_dict = {'name': name, 'short desc': short_desc, 'price': price, 'price per unit': price_per_unit, 'long desc': long_desc,
+'nutritional info': nutritional_info_dict, 'url': product_link, 'timestamp': time.time(), 'image_path': image_path}
+        self.write_to_JSON(product_dict, name)
+
+    def write_to_JSON(self, product_dict, name):
+        with open(f'{self.cwd}/raw_data/{name}/data.json', 'w') as data_file:
+            json.dump(product_dict, data_file)
+
+
+    def download_image(self, name):
+        try:
+            image_tag = self.driver.find_element(by=By.XPATH, value='//img[@class="pd__image"]')
+            image_src = image_tag.get_attribute('src')
+
+            image_data = requests.get(image_src).content
+            with open(f'{self.cwd}/raw_data/{name}/{name}.jpg', 'wb') as handler:
+                handler.write(image_data)
+        except:
+            raise FileNotFoundError
 
 
 
@@ -174,11 +194,9 @@ if __name__ == "__main__":
     sainsburys_scraper.get_category_urls()
     for category_link in sainsburys_scraper.category_links:
         sainsburys_scraper.get_product_urls(category_link)
-
+    
     for product_link in sainsburys_scraper.product_links:
         sainsburys_scraper.get_product_info(product_link)
-
-    # Scraper.download_image("https://assets.sainsburys-groceries.co.uk/gol/1196757/1/640x640.jpg", "banana")
 
 """
 while True:
