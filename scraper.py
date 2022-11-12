@@ -106,6 +106,13 @@ class Scraper:
         Within each product div element, the a element is found and the url is retrieved from the a element.
         Once all product div elements have had a product url extracted, the link for the next page is found and navigated to.
         If a next page link cannot be found (i.e. all pages have been scraped) the function ends.
+
+        Args:
+            category_link (str): the url for the category page from which product page urls are to be extracted
+
+        Returns:
+            Nothing.
+            Populates self.product_links with the product page urls retrieved.
         """
         self.__driver.get(category_link)
 
@@ -137,6 +144,13 @@ class Scraper:
         If the page is not loaded within 10 seconds, the function will wait 1000 seconds before calling itself, which reloads the page.
         The function checks whether or not a folder exists with cwd/raw_data for the current product name. If not, the folder is created.
         The function calls download_images to save any extracted images as jpg files within the cwd/raw_data/name/images folder.
+
+        Args:
+            product_link (str): the url for the product page to retrieve information from
+
+        Returns:
+            Nothing.
+            Retrieves information, enters information into a dictionary, calls methods to download images and write the dictionary to JSON.
         """
         try:
             self.__driver.get(product_link)
@@ -156,7 +170,7 @@ class Scraper:
             except:
                 os_mkdir(folder_path)
 
-            image_paths = self.__download_images(folder_path, name, timestamp)
+            image_paths = self.__download_images(folder_path, timestamp)
 
             price_tag = self.__driver.find_element(by=By.XPATH, value='//div[@class="pd__cost"]')
             price = price_tag.find_elements(by=By.XPATH, value='.//div')[1].text
@@ -251,14 +265,30 @@ class Scraper:
         """
         Writes a dictionary to a JSON file.
         Called by get_product_info to write the dictionaries to a JSON file.
+
+        Args:
+            cwd (str): a string for the current working directory
+            product-dict (dict): a dictionary containing product information
+            name (str): the name of the product, equivalent to product_dict['name']
+
+        Returns:
+            Nothing.
+            Writes dictionary to JSON file.
         """
         with open(f'{cwd}/raw_data/{name}/data.json', 'w') as data_file:
             json_dump(product_dict, data_file)
 
-    def __download_images(self, folder_path, name: str, timestamp: str) -> str:
+    def __download_images(self, folder_path: str, timestamp: str) -> list:
         """
         Ensures that a folder to store images exists.
-        Downloads product images from a page and returns a list of the file paths they are saved to.
+        Downloads product images from a page to the images folder and returns a list of the file paths they are saved to.
+
+        Args:
+            folder_path (str): the path where the product information is to be stored, containing an images folder to save downloaded images to
+            timestamp (str): the formatted timestamp for when the web page was accessed, used to construct the title for the image
+
+        Returns:
+            image_paths (list): a list containing the file paths for each image as strings
         """
         image_folder_path = f"{folder_path}/images"
         try:
@@ -292,7 +322,7 @@ class Scraper:
                 image_paths.append(image_path)
             return image_paths
         except:
-            return "No images found."
+            return ["No images found."]
 
 if __name__ == "__main__":
     sainsburys_scraper = Scraper("https://www.sainsburys.co.uk/")
