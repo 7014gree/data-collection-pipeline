@@ -1,13 +1,15 @@
-from selenium import webdriver
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
-import json
-import os
-import requests
-import time
 from datetime import datetime
+from selenium import webdriver
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
+from json import dump as json_dump
+from os import path as os_path
+from os import mkdir as os_mkdir
+from requests import get as requests_get
+from time import sleep as time_sleep
+
 
 class Scraper:
     def __init__(self, url: str):
@@ -16,25 +18,22 @@ class Scraper:
         self.category_links = []
         self.product_links = []
         self.delay = 10
-        self.image_downloaded = False
-        self.cwd = os.path.dirname(os.path.realpath(__file__))
+        self.cwd = os_path.dirname(os_path.realpath(__file__))
 
         self.raw_data_folder()
         self.accept_cookies()
 
     def raw_data_folder(self):
         try:
-            assert os.path.exists(f"{self.cwd}/raw_data")
+            assert os_path.exists(f"{self.cwd}/raw_data")
         except:
-            os.mkdir(f"{self.cwd}/raw_data")
+            os_mkdir(f"{self.cwd}/raw_data")
 
     def navigate_to_groceries(self):
-        time.sleep(5)
-
+        time_sleep(1)
         groceries_tag = self.driver.find_element(by=By.XPATH, value='//a[@data-label="Groceries"]')
         self.driver.get(groceries_tag.get_attribute('href'))
-
-        time.sleep(4)
+        time_sleep(1)
 
     def accept_cookies(self):
         try:
@@ -43,7 +42,7 @@ class Scraper:
             accept_cookies_button.click()
         except TimeoutException:
             pass
-        time.sleep(2)
+        time_sleep(2)
 
     def new_product_info_dict(self) -> dict:
         return 
@@ -58,8 +57,8 @@ class Scraper:
         except TimeoutException:
             print(f"Error retrieving category urls. Retrying...")
             self.get_category_urls()
-        print(self.category_links)
-        time.sleep(2)
+        print(f"Scraping product information from: {self.category_links}.")
+        time_sleep(2)
 
     def get_product_urls(self, category_link):
         self.driver.get(category_link)
@@ -72,7 +71,7 @@ class Scraper:
                 for product_tag in product_div_tags:
                     product_link_tag = product_tag.find_element(by=By.XPATH, value='.//a')
                     self.product_links.append(product_link_tag.get_attribute('href'))
-                time.sleep(1)
+                time_sleep(1)
 
                 try:
                     next_page_tag = self.driver.find_element(by=By.XPATH, value='//li[@class="next"]')
@@ -97,9 +96,9 @@ class Scraper:
             short_desc = self.driver.find_element(by=By.XPATH, value='//div[@class="pd__description"]').text
 
             try:
-                assert os.path.exists(f"{self.cwd}/raw_data/{name}")
+                assert os_path.exists(f"{self.cwd}/raw_data/{name}")
             except:
-                os.mkdir(f"{self.cwd}/raw_data/{name}")
+                os_mkdir(f"{self.cwd}/raw_data/{name}")
 
             image_paths = self.download_images(name, timestamp)
 
@@ -160,11 +159,11 @@ class Scraper:
             print(f"Error retrieving product information for: {product_link}. Retrying in 1000 seconds...")
             for _ in range(100):
                 print(f"{1000 - _ * 10} seconds remaining...")
-                time.sleep(10)
+                time_sleep(10)
             print("Retrying...")
             self.get_product_info(product_link)
         
-        time.sleep(1)
+        time_sleep(1)
 
         product_dict = {
             'name': name,
@@ -181,31 +180,38 @@ class Scraper:
 
     def write_to_JSON(self, product_dict, name):
         with open(f'{self.cwd}/raw_data/{name}/data.json', 'w') as data_file:
-            json.dump(product_dict, data_file)
+            json_dump(product_dict, data_file)
 
 
     def download_images(self, name, timestamp) -> str:
         folder_path = f"{self.cwd}/raw_data/{name}/images"
         try:
-            assert os.path.exists(folder_path)
+            assert os_path.exists(folder_path)
         except:
-            os.mkdir(folder_path)
+            os_mkdir(folder_path)
 
         try:
             image_paths = []
-            image_tags = self.driver.find_elements(by=By.XPATH, value='//img[@class="pd__image"]')
+
+            # Originally only looked for @class='pd__image' but this did not work for all cases.
+            # Now tries to catch the main exception and gives up otherwise.
+            try:
+                image_tags = self.driver.find_elements(by=By.XPATH, value='//img[@class="pd__image"]')
+                assert image_tags != []
+            except:
+                image_tags = self.driver.find_elements(by=By.XPATH, value='//img[@class="pd__image pd__image__nocursor"]')
                 
             for index, tag in enumerate(image_tags):
                 image_src = tag.get_attribute('src')
-                image_data = requests.get(image_src).content
+                image_data = requests_get(image_src).content
 
-                path = f'{folder_path}/{timestamp}_{index}.jpg'
-                with open(path, 'wb') as handler:
+                image_path = f'{folder_path}/{timestamp}_{index}.jpg'
+                with open(image_path, 'wb') as handler:
                     handler.write(image_data)
 
                 # Makes the slashes the same direction for dictionary/writing dictionary to JSON
-                path = path.replace('\\\\','/')
-                image_paths.append(path)
+                image_path = image_path.replace('\\','/')
+                image_paths.append(image_path)
             return image_paths
         except:
             return "No images found."
@@ -223,6 +229,6 @@ if __name__ == "__main__":
 
 
 # To stop browser from closing once done
-print("Scraper done")
+print("Scraping complete")
 while True:
     pass
