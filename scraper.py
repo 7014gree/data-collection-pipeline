@@ -256,7 +256,7 @@ class Scraper:
             'nutritional info': nutritional_info_dict,
             'url': product_link,
             'timestamp': timestamp,
-            'image_path': image_paths
+            'image paths': image_paths
         }
         self.write_to_JSON(self.cwd, product_dict, name)
 
@@ -327,16 +327,16 @@ class Scraper:
 if __name__ == "__main__":
     sainsburys_scraper = Scraper("https://www.sainsburys.co.uk/")
 
-    sainsburys_scraper.navigate_to_groceries()
+    """sainsburys_scraper.navigate_to_groceries()
     sainsburys_scraper.get_category_urls()
 
     for category_link in sainsburys_scraper.category_links:
         sainsburys_scraper.get_product_urls(category_link)
     
     for product_link in sainsburys_scraper.product_links:
-        sainsburys_scraper.get_product_info(product_link)
+        sainsburys_scraper.get_product_info(product_link)"""
 
-
+    sainsburys_scraper.get_product_info("https://www.sainsburys.co.uk/gol-ui/product/fruitandveg-essentials/sainsburys-loose-fairtrade-bananas")
 
     # To stop browser from closing once done
     print("Scraping complete")
