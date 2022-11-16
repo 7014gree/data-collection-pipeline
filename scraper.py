@@ -5,10 +5,12 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
+from selenium.common.exceptions import NoSuchElementException
 from os import path as os_path
 from os import mkdir as os_mkdir
 from requests import get as requests_get
 from time import sleep
+from logging import error
 
 
 class Scraper:
@@ -31,8 +33,6 @@ class Scraper:
     def __init__(self, url: str):
         self.__driver = webdriver.Chrome()
         self.__driver.get(url)
-        self.category_links = []
-        self.product_links = []
         self.delay = 10
         self.cwd = os_path.dirname(os_path.realpath(__file__))
 
@@ -49,7 +49,8 @@ class Scraper:
         """
         try:
             assert os_path.exists(f"{self.cwd}/raw_data")
-        except:
+        except AssertionError:
+            error("No raw data folder found, making new raw data folder.")
             os_mkdir(f"{self.cwd}/raw_data")
 
     def navigate_to_groceries(self) -> None:
@@ -71,33 +72,37 @@ class Scraper:
             accept_cookies_button = self.__driver.find_element(by=By.XPATH, value='//button[@id="onetrust-accept-btn-handler"]')
             accept_cookies_button.click()
         except TimeoutException:
+            error("Cookie timeout error - either cookies took too long to load or have already been accepted.")
             pass
         sleep(2)
 
-    def get_category_urls(self) -> None:
+    def get_category_urls(self) -> list:
         """
         This function waits until the Groceries page has loaded, and then retrieves the urls for the categories of groceries.
         If the elements for the categories of groceries does not appear within 10 seconds the function attempts to navigate to the Groceries page.
         Then the function is called again, reloading the page.
         The function prints the urls from which product urls will be received.
         """
+
+        category_links = []
         try:
             WebDriverWait(self.__driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//div[@class="mFourCols mNavigationProposionTileWrapper bottomMargin30"]')))
             category_tags = self.__driver.find_elements(by=By.XPATH, value='//div[@class="mNavigationPropositionTile mNavigationBlock-desktop"]')
             for category in category_tags:
                 category_a_tag = category.find_element(by=By.XPATH, value='./a')
-                self.category_links.append(category_a_tag.get_attribute('href'))
+                category_links.append(category_a_tag.get_attribute('href'))
         except TimeoutException:
-            print(f"Error retrieving category urls. Retrying...")
+            print(f"Timeout error retrieving category urls. Refreshing page and retrying...")
             try:
                 self.navigate_to_groceries()
             except:
                 pass
             self.get_category_urls()
-        print(f"Scraping product information from: {self.category_links}.")
+        print(f"Scraping product information from: {category_links}.")
         sleep(2)
+        return category_links
 
-    def get_product_urls(self, category_link: str) -> None:
+    def get_product_urls(self, category_link: str) -> list:
         """
         This function first navigates to the first page for a grocery category.
         Then the function waits for the ul element containing html for products to be loaded.
@@ -114,6 +119,9 @@ class Scraper:
             Nothing.
             Populates self.product_links with the product page urls retrieved.
         """
+
+        product_links = []
+
         self.__driver.get(category_link)
 
         try:
@@ -123,19 +131,21 @@ class Scraper:
                 product_div_tags = product_grid.find_elements(by=By.XPATH, value='.//div[@class="productInfo"]')
                 for product_tag in product_div_tags:
                     product_link_tag = product_tag.find_element(by=By.XPATH, value='.//a')
-                    self.product_links.append(product_link_tag.get_attribute('href'))
+                    product_links.append(product_link_tag.get_attribute('href'))
                 sleep(1)
 
                 try:
                     next_page_tag = self.__driver.find_element(by=By.XPATH, value='//li[@class="next"]')
                     next_page_url = next_page_tag.find_element(by=By.XPATH, value='.//a').get_attribute('href')
-                    self.get_product_urls(next_page_url) 
+                    product_links.extend(self.get_product_urls(next_page_url))
                 # Stop when can no longer find a tag for next page
-                except:
+                except NoSuchElementException:
                     break
         except TimeoutException:
-            print(f"Timeout error retrieving product urls from: {category_link}. Retrying...")
+            print(f"Timeout error retrieving product urls from: {category_link}. Refreshing page and retrying...")
             self.get_product_urls(category_link)
+
+        return product_links
 
     def get_product_info(self, product_link: str) -> None:
         """
@@ -167,7 +177,7 @@ class Scraper:
             folder_path = f"{self.cwd}/raw_data/{name}"
             try:
                 assert os_path.exists(folder_path)
-            except:
+            except AssertionError:
                 os_mkdir(folder_path)
 
             image_paths = self.__download_images(folder_path, timestamp)
@@ -178,7 +188,8 @@ class Scraper:
             # Catches cases where an item is on sale and hence the tags used are slightly different.
             try:
                 price_per_unit = price_tag.find_element(by=By.XPATH, value='.//*[@data-test-id="pd-unit-price"]').text
-            except:
+            except NoSuchElementException:
+                error(f"For url {product_link}: unable to find price per unit at default location, assuming item is on sale and re-entering price and price per unit.")
                 offer_price_tag = self.__driver.find_element(by=By.XPATH, value='//div[@data-test-id="pd-retail-price"]')
                 offer_price_divs = offer_price_tag.find_element(by=By.XPATH, value='.//div')
                 price = offer_price_divs[1].text
@@ -187,10 +198,12 @@ class Scraper:
             # Catches cases where a long description uses a slightly different tag or just doesn't exist
             try:
                 long_desc = self.__driver.find_element(by=By.XPATH, value='//div[@class="productText"]').text
-            except:       
+            except NoSuchElementException:
+                error(f"For url {product_link}: unable to find long description at default location, trying for class = memo.")      
                 try:
                     long_desc = self.__driver.find_element(by=By.XPATH, value='//div[@class="memo"]').text
-                except:
+                except NoSuchElementException:
+                    error(f"For url {product_link}: unable to find long description, dictionary populated with 'N/A'.")
                     long_desc = "N/A"
 
             # Fills dictionary with N/A in case the category doesn't appear on the page
@@ -229,10 +242,10 @@ class Scraper:
                     try:
                         row_amount = row.find_element(by=By.XPATH, value='.//td').text
                         nutritional_info_dict[row_name] = row_amount
-                    except:
-                        pass
-            except:
-                pass
+                    except NoSuchElementException:
+                        error(f"For url {product_link}: '{row_name}' not in nutritional information dictionary. Information discarded.")
+            except NoSuchElementException:
+                error(f"For url {product_link}: no nutritional information found. Dictionary populated with 'N/A'.")
 
         # If no inforamtion has loaded, tries again in 1,000 seconds.
         # Prints to console in case it starts looping indefinitely and user wants to stop the script.
@@ -258,10 +271,11 @@ class Scraper:
             'timestamp': timestamp,
             'image paths': image_paths
         }
-        self.write_to_JSON(self.cwd, product_dict, name)
+
+        return product_dict
 
     @staticmethod
-    def write_to_JSON(cwd: str, product_dict: dict, name: str) -> None:
+    def write_to_JSON(cwd: str, product_dict: dict) -> None:
         """
         Writes a dictionary to a JSON file.
         Called by get_product_info to write the dictionaries to a JSON file.
@@ -275,7 +289,7 @@ class Scraper:
             Nothing.
             Writes dictionary to JSON file.
         """
-        with open(f'{cwd}/raw_data/{name}/data.json', 'w') as data_file:
+        with open(f'{cwd}/raw_data/{product_dict["name"]}/data.json', 'w') as data_file:
             json_dump(product_dict, data_file)
 
     def __download_images(self, folder_path: str, timestamp: str) -> list:
@@ -293,7 +307,7 @@ class Scraper:
         image_folder_path = f"{folder_path}/images"
         try:
             assert os_path.exists(image_folder_path)
-        except:
+        except AssertionError:
             os_mkdir(image_folder_path)
 
         try:
@@ -304,7 +318,8 @@ class Scraper:
             try:
                 image_tags = self.__driver.find_elements(by=By.XPATH, value='//img[@class="pd__image"]')
                 assert image_tags != []
-            except:
+            except AssertionError:
+                error(f"No image tags found with default class attribute in {folder_path}, retrying with alternative attribute.")
                 image_tags = self.__driver.find_elements(by=By.XPATH, value='//img[@class="pd__image pd__image__nocursor"]')
 
             # enumerate used to keep track of the image number.    
@@ -322,21 +337,23 @@ class Scraper:
                 image_paths.append(image_path)
             return image_paths
         except:
+            error(f"No images found for folder path {folder_path}.")
             return ["No images found."]
 
 if __name__ == "__main__":
     sainsburys_scraper = Scraper("https://www.sainsburys.co.uk/")
+    cwd = sainsburys_scraper.cwd
 
-    """sainsburys_scraper.navigate_to_groceries()
-    sainsburys_scraper.get_category_urls()
+    sainsburys_scraper.navigate_to_groceries()
+    #category_urls = sainsburys_scraper.get_category_urls()
+    product_links = []
 
-    for category_link in sainsburys_scraper.category_links:
-        sainsburys_scraper.get_product_urls(category_link)
+    #for category_link in category_urls:
+    product_links = sainsburys_scraper.get_product_urls('https://www.sainsburys.co.uk/shop/gb/groceries/fruit-veg/fruitandveg-essentials')
     
-    for product_link in sainsburys_scraper.product_links:
-        sainsburys_scraper.get_product_info(product_link)"""
-
-    sainsburys_scraper.get_product_info("https://www.sainsburys.co.uk/gol-ui/product/fruitandveg-essentials/sainsburys-loose-fairtrade-bananas")
+    for product_url in product_links:
+        product_data = sainsburys_scraper.get_product_info(product_url)
+        sainsburys_scraper.write_to_JSON(cwd, product_data)
 
     # To stop browser from closing once done
     print("Scraping complete")
