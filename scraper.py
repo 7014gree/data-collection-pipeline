@@ -251,9 +251,9 @@ class Scraper:
         # Prints to console in case it starts looping indefinitely and user wants to stop the script.
         # Prints status of timer every 10 seconds.
         except TimeoutException:
-            print(f"Error retrieving product information for: {product_link}. Retrying in 1000 seconds...")
-            for _ in range(100):
-                print(f"{1000 - _ * 10} seconds remaining...")
+            print(f"Error retrieving product information for: {product_link}. Retrying in 100 seconds...")
+            for _ in range(10):
+                print(f"{100 - _ * 10} seconds remaining...")
                 sleep(10)
             print("Retrying...")
             self.get_product_info(product_link)
@@ -345,11 +345,11 @@ if __name__ == "__main__":
     cwd = sainsburys_scraper.cwd
 
     sainsburys_scraper.navigate_to_groceries()
-    #category_urls = sainsburys_scraper.get_category_urls()
+    category_urls = sainsburys_scraper.get_category_urls()
     product_links = []
 
-    #for category_link in category_urls:
-    product_links = sainsburys_scraper.get_product_urls('https://www.sainsburys.co.uk/shop/gb/groceries/fruit-veg/fruitandveg-essentials')
+    for category_link in category_urls:
+        product_links.extend(sainsburys_scraper.get_product_urls(category_link))
     
     for product_url in product_links:
         product_data = sainsburys_scraper.get_product_info(product_url)
