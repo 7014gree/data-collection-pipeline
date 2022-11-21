@@ -16,23 +16,23 @@ from logging import error
 class Scraper:
 
     """
-    This class a web scraper used to extract data from https://www.sainsburys.co.uk
+    This class is a web scraper used to extract data from https://www.sainsburys.co.uk
 
     Attributes:
-        driver is the selenium webdriver used for navigating web pages.
-        category_links contains a list of urls for categories to scrape.
-        product_links is populated with urls scraped from each category link.
-        delay is used throughout the class for WebDriverWait.
-        cwd is the path for the current working directory, used for making/checking directories and writing files.
+    -   driver is the selenium webdriver used for navigating web pages.
+    -   category_links contains a list of urls for categories to scrape.
+    -   product_links is populated with urls scraped from each category link.
+    -   delay is used throughout the class for WebDriverWait.
+    -   cwd is the path for the current working directory, used for making/checking directories and writing files.
 
     Upon initialising an instance of the class, the following methods are called:
-        make_raw_data_folder() checks that a folder exists to store product information, if not it makes one.
-        accept_cookies() accepts cookies on the web page if they pop up
+    -   make_raw_data_folder() checks that a folder exists to store product information, if not it makes one.
+    -   accept_cookies() accepts cookies on the web page if they pop up.
     """
 
-    def __init__(self, url: str):
-        self.__driver = webdriver.Chrome()
-        self.__driver.get(url)
+    def __init__(self, url: str = "https://www.sainsburys.co.uk"):
+        self._driver = webdriver.Chrome()
+        self._driver.get(url)
         self.delay = 10
         self.cwd = os_path.dirname(os_path.realpath(__file__))
 
@@ -53,28 +53,28 @@ class Scraper:
             error("No raw data folder found, making new raw data folder.")
             os_mkdir(f"{self.cwd}/raw_data")
 
-    def navigate_to_groceries(self) -> None:
-        """
-        This function navigates from https://www.sainsburys.co.uk to the Groceries section.
-        """
-        sleep(1)
-        groceries_tag = self.__driver.find_element(by=By.XPATH, value='//a[@data-label="Groceries"]')
-        self.__driver.get(groceries_tag.get_attribute('href'))
-        sleep(1)
-
     def __accept_cookies(self) -> None:
         """
         This function clicks the accept cookies button once the element for the button has loaded.
         If the element does not load within 10 seconds, the script continues to run as normal.
         """
         try:
-            WebDriverWait(self.__driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//button[@id="onetrust-accept-btn-handler"]')))
-            accept_cookies_button = self.__driver.find_element(by=By.XPATH, value='//button[@id="onetrust-accept-btn-handler"]')
+            WebDriverWait(self._driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//button[@id="onetrust-accept-btn-handler"]')))
+            accept_cookies_button = self._driver.find_element(by=By.XPATH, value='//button[@id="onetrust-accept-btn-handler"]')
             accept_cookies_button.click()
         except TimeoutException:
             error("Cookie timeout error - either cookies took too long to load or have already been accepted.")
             pass
         sleep(2)
+
+    def navigate_to_groceries(self) -> None:
+        """
+        This function navigates from https://www.sainsburys.co.uk to the Groceries section.
+        """
+        sleep(1)
+        groceries_tag = self._driver.find_element(by=By.XPATH, value='//a[@data-label="Groceries"]')
+        self._driver.get(groceries_tag.get_attribute('href'))
+        sleep(1)
 
     def get_category_urls(self) -> list:
         """
@@ -86,8 +86,8 @@ class Scraper:
 
         category_links = []
         try:
-            WebDriverWait(self.__driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//div[@class="mFourCols mNavigationProposionTileWrapper bottomMargin30"]')))
-            category_tags = self.__driver.find_elements(by=By.XPATH, value='//div[@class="mNavigationPropositionTile mNavigationBlock-desktop"]')
+            WebDriverWait(self._driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//div[@class="mFourCols mNavigationProposionTileWrapper bottomMargin30"]')))
+            category_tags = self._driver.find_elements(by=By.XPATH, value='//div[@class="mNavigationPropositionTile mNavigationBlock-desktop"]')
             for category in category_tags:
                 category_a_tag = category.find_element(by=By.XPATH, value='./a')
                 category_links.append(category_a_tag.get_attribute('href'))
@@ -97,7 +97,7 @@ class Scraper:
                 self.navigate_to_groceries()
             except:
                 pass
-            self.get_category_urls()
+            category_links = self.get_category_urls()
         print(f"Scraping product information from: {category_links}.")
         sleep(2)
         return category_links
@@ -122,12 +122,12 @@ class Scraper:
 
         product_links = []
 
-        self.__driver.get(category_link)
+        self._driver.get(category_link)
 
         try:
-            WebDriverWait(self.__driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//ul[@class="productLister gridView"]')))
+            WebDriverWait(self._driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//ul[@class="productLister gridView"]')))
             while True:
-                product_grid = self.__driver.find_element(by=By.XPATH, value='//ul[@class="productLister gridView"]')
+                product_grid = self._driver.find_element(by=By.XPATH, value='//ul[@class="productLister gridView"]')
                 product_div_tags = product_grid.find_elements(by=By.XPATH, value='.//div[@class="productInfo"]')
                 for product_tag in product_div_tags:
                     product_link_tag = product_tag.find_element(by=By.XPATH, value='.//a')
@@ -135,7 +135,7 @@ class Scraper:
                 sleep(1)
 
                 try:
-                    next_page_tag = self.__driver.find_element(by=By.XPATH, value='//li[@class="next"]')
+                    next_page_tag = self._driver.find_element(by=By.XPATH, value='//li[@class="next"]')
                     next_page_url = next_page_tag.find_element(by=By.XPATH, value='.//a').get_attribute('href')
                     product_links.extend(self.get_product_urls(next_page_url))
                 # Stop when can no longer find a tag for next page
@@ -143,7 +143,7 @@ class Scraper:
                     break
         except TimeoutException:
             print(f"Timeout error retrieving product urls from: {category_link}. Refreshing page and retrying...")
-            self.get_product_urls(category_link)
+            product_links.extend(self.get_product_urls(category_link))
 
         return product_links
 
@@ -163,15 +163,15 @@ class Scraper:
             Retrieves information, enters information into a dictionary, calls methods to download images and write the dictionary to JSON.
         """
         try:
-            self.__driver.get(product_link)
+            self._driver.get(product_link)
             # Gets timestamp in required format for timestamp in dictionary and name of image file.
             timestamp = datetime.now().strftime("%d%m%Y_%H%M%S")
             
             # Waits until page is loaded up to long description/nutrtional table.
-            WebDriverWait(self.__driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//div[@class="ln-c-card pd-details ln-c-card--soft"]')))
+            WebDriverWait(self._driver, self.delay).until(EC.presence_of_element_located((By.XPATH, '//div[@class="ln-c-card pd-details ln-c-card--soft"]')))
 
-            name = self.__driver.find_element(by=By.XPATH, value='//h1[@class="pd__header"]').text
-            short_desc = self.__driver.find_element(by=By.XPATH, value='//div[@class="pd__description"]').text
+            name = self._driver.find_element(by=By.XPATH, value='//h1[@class="pd__header"]').text
+            short_desc = self._driver.find_element(by=By.XPATH, value='//div[@class="pd__description"]').text
 
             # Ensures that a folder exists to store the JSON file and images/
             folder_path = f"{self.cwd}/raw_data/{name}"
@@ -182,7 +182,7 @@ class Scraper:
 
             image_paths = self.__download_images(folder_path, timestamp)
 
-            price_tag = self.__driver.find_element(by=By.XPATH, value='//div[@class="pd__cost"]')
+            price_tag = self._driver.find_element(by=By.XPATH, value='//div[@class="pd__cost"]')
             price = price_tag.find_elements(by=By.XPATH, value='.//div')[1].text
 
             # Catches cases where an item is on sale and hence the tags used are slightly different.
@@ -190,18 +190,18 @@ class Scraper:
                 price_per_unit = price_tag.find_element(by=By.XPATH, value='.//*[@data-test-id="pd-unit-price"]').text
             except NoSuchElementException:
                 error(f"For url {product_link}: unable to find price per unit at default location, assuming item is on sale and re-entering price and price per unit.")
-                offer_price_tag = self.__driver.find_element(by=By.XPATH, value='//div[@data-test-id="pd-retail-price"]')
+                offer_price_tag = self._driver.find_element(by=By.XPATH, value='//div[@data-test-id="pd-retail-price"]')
                 offer_price_divs = offer_price_tag.find_element(by=By.XPATH, value='.//div')
                 price = offer_price_divs[1].text
-                price_per_unit = self.__driver.find_element(by=By.XPATH, value='//div[@data-test-id=""pd-unit-price"]')
+                price_per_unit = self._driver.find_element(by=By.XPATH, value='//div[@data-test-id=""pd-unit-price"]')
 
             # Catches cases where a long description uses a slightly different tag or just doesn't exist
             try:
-                long_desc = self.__driver.find_element(by=By.XPATH, value='//div[@class="productText"]').text
+                long_desc = self._driver.find_element(by=By.XPATH, value='//div[@class="productText"]').text
             except NoSuchElementException:
                 error(f"For url {product_link}: unable to find long description at default location, trying for class = memo.")      
                 try:
-                    long_desc = self.__driver.find_element(by=By.XPATH, value='//div[@class="memo"]').text
+                    long_desc = self._driver.find_element(by=By.XPATH, value='//div[@class="memo"]').text
                 except NoSuchElementException:
                     error(f"For url {product_link}: unable to find long description, dictionary populated with 'N/A'.")
                     long_desc = "N/A"
@@ -223,7 +223,7 @@ class Scraper:
             # If there is a nutritional information table on the page, this tries to retrieve the data from the first column.
             # If there isn't a table, passes and the values remain as N/A.
             try:
-                nutritional_info_table = self.__driver.find_element(by=By.XPATH, value='//table[@class="nutritionTable"]')
+                nutritional_info_table = self._driver.find_element(by=By.XPATH, value='//table[@class="nutritionTable"]')
                 nutritional_table_rows = nutritional_info_table.find_elements(by=By.XPATH, value='.//tr')
 
                 nutritional_info_dict['unit'] = nutritional_table_rows[0].find_elements(by=By.XPATH, value='.//th[@scope="col"]')[1].text
@@ -316,11 +316,11 @@ class Scraper:
             # Originally only looked for @class='pd__image' but this did not work for all cases.
             # Now tries to catch the main exception and gives up otherwise.
             try:
-                image_tags = self.__driver.find_elements(by=By.XPATH, value='//img[@class="pd__image"]')
+                image_tags = self._driver.find_elements(by=By.XPATH, value='//img[@class="pd__image"]')
                 assert image_tags != []
             except AssertionError:
                 error(f"No image tags found with default class attribute in {folder_path}, retrying with alternative attribute.")
-                image_tags = self.__driver.find_elements(by=By.XPATH, value='//img[@class="pd__image pd__image__nocursor"]')
+                image_tags = self._driver.find_elements(by=By.XPATH, value='//img[@class="pd__image pd__image__nocursor"]')
 
             # enumerate used to keep track of the image number.    
             for index, tag in enumerate(image_tags):
