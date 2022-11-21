@@ -82,6 +82,7 @@ class Scraper:
         If the elements for the categories of groceries does not appear within 10 seconds the function attempts to navigate to the Groceries page.
         Then the function is called again, reloading the page.
         The function prints the urls from which product urls will be received.
+        Returns a list containing the category page links.
         """
 
         category_links = []
@@ -113,11 +114,10 @@ class Scraper:
         If a next page link cannot be found (i.e. all pages have been scraped) the function ends.
 
         Args:
-            category_link (str): the url for the category page from which product page urls are to be extracted
+            category_link (str): the url for the category page from which product page urls are to be extracted.
 
         Returns:
-            Nothing.
-            Populates self.product_links with the product page urls retrieved.
+            product_links (list): a list containing the extracted product page urls.
         """
 
         product_links = []
@@ -150,17 +150,16 @@ class Scraper:
     def get_product_info(self, product_link: str) -> None:
         """
         This function retrieves all product information from a product page and puts the information in a dictionary.
-        Then it calls a function write the dictionary to a JSON file.
         If the page is not loaded within 10 seconds, the function will wait 1000 seconds before calling itself, which reloads the page.
         The function checks whether or not a folder exists with cwd/raw_data for the current product name. If not, the folder is created.
         The function calls download_images to save any extracted images as jpg files within the cwd/raw_data/name/images folder.
+        Scraper.write_to_JSON() is used to write the output dictionary to a JSON in the correct path within raw_data.
 
         Args:
-            product_link (str): the url for the product page to retrieve information from
+        -   product_link (str): the url for the product page to retrieve information from.
 
         Returns:
-            Nothing.
-            Retrieves information, enters information into a dictionary, calls methods to download images and write the dictionary to JSON.
+        -   product_info (dict): a dictionary containing the extracted information from the provided url.
         """
         try:
             self._driver.get(product_link)
@@ -247,20 +246,7 @@ class Scraper:
             except NoSuchElementException:
                 error(f"For url {product_link}: no nutritional information found. Dictionary populated with 'N/A'.")
 
-        # If no inforamtion has loaded, tries again in 1,000 seconds.
-        # Prints to console in case it starts looping indefinitely and user wants to stop the script.
-        # Prints status of timer every 10 seconds.
-        except TimeoutException:
-            print(f"Error retrieving product information for: {product_link}. Retrying in 100 seconds...")
-            for _ in range(10):
-                print(f"{100 - _ * 10} seconds remaining...")
-                sleep(10)
-            print("Retrying...")
-            self.get_product_info(product_link)
-        
-        sleep(1)
-
-        product_dict = {
+            product_dict = {
             'name': name,
             'short desc': short_desc,
             'price': price,
@@ -272,22 +258,35 @@ class Scraper:
             'image paths': image_paths
         }
 
+        # If no inforamtion has loaded, tries again in 1,000 seconds.
+        # Prints to console in case it starts looping indefinitely and user wants to stop the script.
+        # Prints status of timer every 10 seconds.
+        except TimeoutException:
+            print(f"Error retrieving product information for: {product_link}. Retrying in 100 seconds...")
+            for _ in range(10):
+                print(f"{100 - _ * 10} seconds remaining...")
+                sleep(10)
+            print("Retrying...")
+            product_dict = self.get_product_info(product_link)
+        
+        sleep(1)
+
         return product_dict
 
     @staticmethod
     def write_to_JSON(cwd: str, product_dict: dict) -> None:
         """
         Writes a dictionary to a JSON file.
-        Called by get_product_info to write the dictionaries to a JSON file.
+        Use to write the outputs from get_product_info to a JSON file.
 
         Args:
-            cwd (str): a string for the current working directory
-            product-dict (dict): a dictionary containing product information
-            name (str): the name of the product, equivalent to product_dict['name']
+        -   cwd (str): a string for the current working directory.
+        -   product-dict (dict): a dictionary containing product information.
+        -   name (str): the name of the product, equivalent to product_dict['name'].
 
         Returns:
-            Nothing.
-            Writes dictionary to JSON file.
+        -   Nothing.
+        -   Writes dictionary to JSON file.
         """
         with open(f'{cwd}/raw_data/{product_dict["name"]}/data.json', 'w') as data_file:
             json_dump(product_dict, data_file)
@@ -298,11 +297,11 @@ class Scraper:
         Downloads product images from a page to the images folder and returns a list of the file paths they are saved to.
 
         Args:
-            folder_path (str): the path where the product information is to be stored, containing an images folder to save downloaded images to
-            timestamp (str): the formatted timestamp for when the web page was accessed, used to construct the title for the image
+        -   folder_path (str): the path where the product information is to be stored, containing an images folder to save downloaded images to.
+        -   timestamp (str): the formatted timestamp for when the web page was accessed, used to construct the title for the image.
 
         Returns:
-            image_paths (list): a list containing the file paths for each image as strings
+        -   image_paths (list): a list containing the file paths for each image as strings.
         """
         image_folder_path = f"{folder_path}/images"
         try:
