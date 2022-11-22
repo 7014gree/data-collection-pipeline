@@ -4,6 +4,7 @@ from logging import error
 from os import path as os_path
 from os import mkdir as os_mkdir
 from selenium import webdriver
+from selenium.common.exceptions import ElementClickInterceptedException
 from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
@@ -71,7 +72,10 @@ class Scraper:
             accept_cookies_button = self._driver.find_element(by=By.XPATH, value='//button[@id="onetrust-accept-btn-handler"]')
             accept_cookies_button.click()
         except TimeoutException:
-            error("Cookie timeout error - either cookies took too long to load or have already been accepted.")
+            error("Cookie timeout error - cookies took too long to load.")
+            pass
+        except ElementClickInterceptedException:
+            error("Cookie click error - cookies have already been accepted.")
             pass
         sleep(2)
 
@@ -362,7 +366,7 @@ if __name__ == "__main__":
         product_data = sainsburys_scraper.get_product_info(product_url)
         sainsburys_scraper.write_to_JSON(cwd, product_data)
 
+    sainsburys_scraper._driver.close()
+
     # To stop browser from closing once done
     print("Scraping complete")
-    while True:
-        pass

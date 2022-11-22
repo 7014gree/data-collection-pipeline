@@ -29,19 +29,22 @@ class ScraperTestCase(unittest.TestCase):
     def test_get_product_info(self):
         product_url = "https://www.sainsburys.co.uk/gol-ui/product/fruitandveg-essentials/sainsburys-loose-fairtrade-bananas"
         test_product_info = self.test_scraper.get_product_info(product_url)
-        self.assertIsInstance(test_product_info, dict, f"Product information = {test_product_info}")
-
+        self.assertIsInstance(test_product_info, dict, f"Product information = {test_product_info}")   
+    
     def test_write_to_JSON(self):
         write_dict = {'name': 'test', 'test1': 1, 'test2': {'test2a': 2, 'test2b': '2b'}}
-        folder_path = self.test_scraper.cwd
+        folder_path = f"{self.test_scraper.cwd}\\raw_data\\test"
         try:
             assert path.exists(folder_path)
         except AssertionError:
             mkdir(folder_path)
-        Scraper.write_to_JSON(folder_path, write_dict)
-        with open(f'{folder_path}/raw_data/test/data.json', 'r') as json_file:
+        Scraper.write_to_JSON(self.test_scraper.cwd, write_dict)
+        with open(f'{folder_path}\\data.json', 'r') as json_file:
             read_dict = load(json_file)
         self.assertDictEqual(write_dict, read_dict)
+
+    def tearDown(self) -> None:
+        self.test_scraper._driver.close()
 
 
 unittest.main(argv=[''], verbosity=0, exit=False)
