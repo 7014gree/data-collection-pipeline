@@ -25,5 +25,6 @@
 - Getting the test for write_to_JSON to work was awkward due to the convoluted way the correct file path is passed to the function, which probably could be improved on but is only that way to begin with because I moved the writing to JSON to its own static function. Also had to use json.load to correctly read in the dictionary and using a test dictionary with an integer as a key was not working as the integer was being read as a string for which the comparison did not match.
 
 # Milestone 7
-- Added Dockerfile and pushed image to Dockerhub
+- Added Dockerfile and pushed image to Dockerhub.
 - Set up github actions to push the image to Dockerhub upon pushing on github, following instructions at https://docs.docker.com/build/ci/github-actions/
+- Had to pull request before pushing the updates to the readme as the github actions were added directly on github.
