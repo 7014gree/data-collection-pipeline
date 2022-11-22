@@ -1,0 +1,6 @@
+# Ignore raw data directory
+raw_data/
+
+# Ignore git and cache folders
+.git
+.cache
