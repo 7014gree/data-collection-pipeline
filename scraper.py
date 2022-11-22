@@ -1,16 +1,17 @@
 from datetime import datetime
 from json import dump as json_dump
+from logging import error
+from os import path as os_path
+from os import mkdir as os_mkdir
 from selenium import webdriver
+from selenium.common.exceptions import NoSuchElementException
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
-from selenium.common.exceptions import NoSuchElementException
-from os import path as os_path
-from os import mkdir as os_mkdir
 from requests import get as requests_get
 from time import sleep
-from logging import error
+
 
 
 class Scraper:
@@ -31,7 +32,14 @@ class Scraper:
     """
 
     def __init__(self, url: str = "https://www.sainsburys.co.uk"):
-        self._driver = webdriver.Chrome()
+        self.options = webdriver.ChromeOptions()
+        self.options.headless = True
+        self.options.add_argument("start-maximized")
+        self.options.add_argument('user-agent=Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/105.0.0.0 Safari/537.36')
+        self.options.add_argument('no-sandbox')
+        self.options.add_argument("disable-dev-shm-usage")
+
+        self._driver = webdriver.Chrome(executable_path="chromedriver-Windows", options=self.options)
         self._driver.get(url)
         self.delay = 10
         self.cwd = os_path.dirname(os_path.realpath(__file__))
@@ -114,10 +122,10 @@ class Scraper:
         If a next page link cannot be found (i.e. all pages have been scraped) the function ends.
 
         Args:
-            category_link (str): the url for the category page from which product page urls are to be extracted.
+        -   category_link (str): the url for the category page from which product page urls are to be extracted.
 
         Returns:
-            product_links (list): a list containing the extracted product page urls.
+        -   product_links (list): a list containing the extracted product page urls.
         """
 
         product_links = []
